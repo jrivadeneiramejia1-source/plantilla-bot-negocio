@@ -1,0 +1,16 @@
+{
+  "name": "plantilla-bot-negocio",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Bot de pedidos para negocios pequeños (Telegram y WhatsApp) en Cloudflare Workers. Ejemplos con negocios inventados.",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "dev": "wrangler dev --local",
+    "db:local": "wrangler d1 execute bot-negocio --local --file=schema.sql"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}

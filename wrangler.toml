@@ -1,0 +1,16 @@
+name = "bot-negocio"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+# Valores que NO son secretos. Los secretos (tokens y claves) se guardan con
+# `wrangler secret put NOMBRE` o en .dev.vars para pruebas locales. Ver README.
+[vars]
+NEGOCIO = "flores-fomi"      # cuál catálogo usar: flores-fomi, fresas-crema o gorras
+OWNER_TELEGRAM_ID = ""       # número de Telegram de la dueña (para avisos y /resumen)
+WA_PHONE_NUMBER_ID = ""      # identificador del número en WhatsApp Cloud API
+WA_API_VERSION = "v21.0"     # confirmar la versión vigente en la documentación de Meta
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bot-negocio"
+database_id = "REEMPLAZAR-con-el-id-de-tu-base-D1"

@@ -1,0 +1,7 @@
+# Copia este archivo como .dev.vars (queda ignorado por git) y pon valores INVENTADOS para pruebas locales.
+# Nunca pegues aquí claves reales dentro de un chat ni en un repo.
+TELEGRAM_BOT_TOKEN=token-de-prueba
+TELEGRAM_WEBHOOK_SECRET=texto-largo-inventado-1
+WA_TOKEN=token-de-prueba
+WA_APP_SECRET=secreto-de-prueba
+WA_VERIFY_TOKEN=palabra-de-verificacion-inventada
