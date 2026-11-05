@@ -34,3 +34,51 @@ export function falsoFetch(estado = 200) {
   f.llamadas = llamadas;
   return f;
 }
+
+// ---------- D1 de mentira con SQLite real (node:sqlite) para probar el SQL de D1Store ----------
+import { readFileSync } from "node:fs";
+import { DatabaseSync } from "node:sqlite";
+
+export function crearD1Falsa() {
+  const db = new DatabaseSync(":memory:");
+  db.exec(readFileSync(new URL("../schema.sql", import.meta.url), "utf8"));
+  return {
+    prepare(sql) {
+      const st = db.prepare(sql);
+      let args = [];
+      const api = {
+        bind(...a) {
+          args = a;
+          return api;
+        },
+        async first() {
+          const r = st.get(...args);
+          return r ? { ...r } : null;
+        },
+        async all() {
+          return { results: st.all(...args).map((r) => ({ ...r })) };
+        },
+        async run() {
+          const r = st.run(...args);
+          return { meta: { changes: Number(r.changes), last_row_id: Number(r.lastInsertRowid) } };
+        },
+      };
+      return api;
+    },
+  };
+}
+
+// «Hoja de Google» de mentira: guarda lo que recibe y puede fallar a pedido.
+export function falsaHoja() {
+  const h = { agregados: [], borrados: [], falla: false };
+  h.copiar = async (id, p) => {
+    if (h.falla) throw new Error("hoja caída");
+    h.agregados.push({ id, nombre: p.nombre });
+    await h.store?.marcarCopiado(id);
+  };
+  h.borrar = async (ids) => {
+    if (h.falla) throw new Error("hoja caída");
+    h.borrados.push(...ids);
+  };
+  return h;
+}

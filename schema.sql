@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS pedidos (
   nota TEXT,
   lineas TEXT NOT NULL,
   total INTEGER NOT NULL,
-  creado TEXT NOT NULL
+  creado TEXT NOT NULL,
+  hoja_ok INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS pedidos_por_negocio ON pedidos (negocio, creado);
 CREATE TABLE IF NOT EXISTS vistos (
@@ -27,4 +28,7 @@ CREATE TABLE IF NOT EXISTS metricas (
   evento TEXT NOT NULL,
   n INTEGER NOT NULL,
   PRIMARY KEY (dia, negocio, canal, evento)
+);
+CREATE TABLE IF NOT EXISTS borrados_pendientes (
+  pedido_id INTEGER PRIMARY KEY
 );

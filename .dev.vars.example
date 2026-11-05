@@ -5,3 +5,6 @@ TELEGRAM_WEBHOOK_SECRET=texto-largo-inventado-1
 WA_TOKEN=token-de-prueba
 WA_APP_SECRET=secreto-de-prueba
 WA_VERIFY_TOKEN=palabra-de-verificacion-inventada
+# Copia a Google Sheets (opcional). La dirección sale de implementar el Apps Script en la hoja DEL CLIENTE.
+SHEETS_URL=https://script.google.com/macros/s/INVENTADO/exec
+SHEETS_TOKEN=palabra-larga-inventada-para-la-hoja

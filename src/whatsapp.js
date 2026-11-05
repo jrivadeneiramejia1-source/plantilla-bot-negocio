@@ -1,6 +1,7 @@
 import { manejar } from "./core.js";
 import { avisarDuenoPorTelegram } from "./telegram.js";
 import { hmacSha256Hex, igualesSeguro } from "./seguridad.js";
+import { crearHoja } from "./sheets.js";
 
 const corto = (t, max) => (t.length > max ? t.slice(0, max - 1) + "…" : t);
 
@@ -125,6 +126,7 @@ async function procesar(cuerpo, env, deps) {
             store: deps.store,
             ahora: deps.ahora,
             notificarDueno: avisarDuenoPorTelegram(env, deps.fetch),
+            hoja: crearHoja(env, deps.fetch, deps.store),
           },
         );
         for (const x of mensajes) await enviar(env, deps, m.from, x.texto, x.opciones);
