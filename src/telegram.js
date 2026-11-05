@@ -1,5 +1,6 @@
 import { manejar, resumenDelDia } from "./core.js";
 import { igualesSeguro } from "./seguridad.js";
+import { crearHoja } from "./sheets.js";
 
 const API = "https://api.telegram.org";
 
@@ -75,6 +76,18 @@ export async function telegramWebhook(request, env, deps) {
       return new Response("ok");
     }
 
+    const hoja = crearHoja(env, deps.fetch, deps.store);
+    if (esDueno && texto?.trim().toLowerCase() === "/reintentar") {
+      const r = hoja ? await hoja.reintentar() : null;
+      await enviarTelegram(
+        env,
+        deps.fetch,
+        chat.id,
+        r ? `Listo: ${r.copiados} copiados a la hoja, ${r.borrados} borrados allá, ${r.fallaron} con error.` : "La hoja no está configurada.",
+      );
+      return new Response("ok");
+    }
+
     const { mensajes } = await manejar(
       {
         canal: "telegram",
@@ -88,6 +101,7 @@ export async function telegramWebhook(request, env, deps) {
         store: deps.store,
         ahora: deps.ahora,
         notificarDueno: avisarDuenoPorTelegram(env, deps.fetch),
+        hoja,
       },
     );
     for (const x of mensajes) await enviarTelegram(env, deps.fetch, chat.id, x.texto, x.opciones);

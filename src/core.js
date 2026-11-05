@@ -206,7 +206,7 @@ function textoDueno(canal, pedidoId, p) {
 // ---------- motor ----------
 /**
  * msg: { canal, usuario, contacto?, texto?, opcion? }
- * ctx: { negocio, store, ahora(), notificarDueno(texto) }
+ * ctx: { negocio, store, ahora(), notificarDueno(texto), hoja? }  (hoja: copia a Google Sheets, opcional)
  * devuelve: { mensajes: [{ texto, opciones?: [{ id, titulo, descripcion? }] }] }
  */
 export async function manejar(msg, ctx) {
@@ -219,8 +219,23 @@ export async function manejar(msg, ctx) {
 
   // Derecho a borrar los datos: siempre funciona.
   if (ATAJOS_BORRAR.has(bajo)) {
+    const idsEnHoja = ctx.hoja ? await store.idsCopiadosDe(msg.canal, msg.usuario) : [];
     await store.borrarSesion(clave);
     await store.anonimizarPedidos(msg.canal, msg.usuario);
+    if (idsEnHoja.length) {
+      // Los datos también están en la hoja del negocio: hay que borrarlos allá. Si falla, queda pendiente.
+      try {
+        await ctx.hoja.borrar(idsEnHoja);
+      } catch (e) {
+        console.error("No se pudo borrar en la hoja:", e?.message ?? e);
+        await store.pendienteBorrarEnHoja(idsEnHoja);
+        try {
+          await ctx.notificarDueno("Una persona pidió borrar sus datos y no se pudo borrar en la hoja. Escribe /reintentar para completarlo.");
+        } catch {
+          /* el pendiente queda guardado de todos modos */
+        }
+      }
+    }
     return { mensajes: [{ texto: "Listo, borré tus datos. Si quieres pedir de nuevo, escribe HOLA." }] };
   }
 
@@ -358,8 +373,17 @@ export async function manejar(msg, ctx) {
       };
       const id = await store.guardarPedido(pedido);
       await store.sumarMetrica(diaBogota(ahora), negocio.id, msg.canal, "pedido");
+      let avisoHoja = "";
+      if (ctx.hoja) {
+        try {
+          await ctx.hoja.copiar(id, pedido);
+        } catch (e) {
+          console.error("No se pudo copiar a la hoja:", e?.message ?? e);
+          avisoHoja = "\n(No se pudo copiar a la hoja. Escribe /reintentar.)";
+        }
+      }
       try {
-        await ctx.notificarDueno(textoDueno(msg.canal, id, pedido));
+        await ctx.notificarDueno(textoDueno(msg.canal, id, pedido) + avisoHoja);
       } catch (e) {
         console.error("No se pudo avisar a la dueña:", e?.message ?? e);
       }
