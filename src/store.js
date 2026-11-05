@@ -10,7 +10,8 @@ export class MemoryStore {
     this.pedidos = [];
     this.vistos = new Map();
     this.metricas = new Map();
-    this.borradosPend = new Set();
+    this.borradosPend = new Map();
+    this.catalogos = new Map();
   }
   async getSesion(clave) {
     const v = this.sesiones.get(clave);
@@ -55,14 +56,25 @@ export class MemoryStore {
   async idsCopiadosDe(canal, usuario) {
     return this.pedidos.filter((p) => p.canal === canal && p.usuario === String(usuario) && p.hoja_ok).map((p) => p.id);
   }
-  async pendienteBorrarEnHoja(ids) {
-    for (const id of ids) this.borradosPend.add(id);
+  async pendienteBorrarEnHoja(ids, clave) {
+    for (const id of ids) this.borradosPend.set(id, clave);
   }
   async borradosPendientes() {
-    return [...this.borradosPend];
+    return [...this.borradosPend].map(([pedido_id, clave]) => ({ pedido_id, clave }));
   }
   async quitarBorradosPendientes(ids) {
     for (const id of ids) this.borradosPend.delete(id);
+  }
+  async getPedido(id) {
+    const p = this.pedidos.find((x) => x.id === Number(id));
+    return p ? JSON.parse(JSON.stringify(p)) : null;
+  }
+  async getCatalogo(negocio) {
+    const c = this.catalogos.get(negocio);
+    return c ? { productos: JSON.parse(c.datos), actualizado: c.actualizado } : null;
+  }
+  async putCatalogo(negocio, productos, actualizadoMs) {
+    this.catalogos.set(negocio, { datos: JSON.stringify(productos), actualizado: actualizadoMs });
   }
   async sumarMetrica(dia, negocio, canal, evento) {
     const k = [dia, negocio, canal, evento].join("|");
@@ -135,7 +147,7 @@ export class D1Store {
   }
   async pedidosSinCopiar() {
     const r = await this.db
-      .prepare("SELECT id, negocio, canal, contacto, nombre, nota, lineas, total, creado FROM pedidos WHERE hoja_ok = 0 ORDER BY id LIMIT 50")
+      .prepare("SELECT id, negocio, canal, usuario, contacto, nombre, nota, lineas, total, creado FROM pedidos WHERE hoja_ok = 0 ORDER BY id LIMIT 50")
       .all();
     return r.results.map((p) => ({ ...p, lineas: JSON.parse(p.lineas) }));
   }
@@ -143,12 +155,32 @@ export class D1Store {
     const r = await this.db.prepare("SELECT id FROM pedidos WHERE canal = ? AND usuario = ? AND hoja_ok = 1").bind(canal, String(usuario)).all();
     return r.results.map((x) => x.id);
   }
-  async pendienteBorrarEnHoja(ids) {
-    for (const id of ids) await this.db.prepare("INSERT OR IGNORE INTO borrados_pendientes (pedido_id) VALUES (?)").bind(id).run();
+  async pendienteBorrarEnHoja(ids, clave) {
+    for (const id of ids) await this.db.prepare("INSERT OR REPLACE INTO borrados_pendientes (pedido_id, clave) VALUES (?, ?)").bind(id, clave).run();
   }
   async borradosPendientes() {
-    const r = await this.db.prepare("SELECT pedido_id FROM borrados_pendientes ORDER BY pedido_id LIMIT 100").all();
-    return r.results.map((x) => x.pedido_id);
+    const r = await this.db.prepare("SELECT pedido_id, clave FROM borrados_pendientes ORDER BY pedido_id LIMIT 100").all();
+    return r.results.map((x) => ({ pedido_id: x.pedido_id, clave: x.clave }));
+  }
+  async getPedido(id) {
+    const p = await this.db
+      .prepare("SELECT id, negocio, canal, usuario, contacto, nombre, nota, lineas, total, creado FROM pedidos WHERE id = ?")
+      .bind(Number(id))
+      .first();
+    return p ? { ...p, lineas: JSON.parse(p.lineas) } : null;
+  }
+  async getCatalogo(negocio) {
+    const r = await this.db.prepare("SELECT datos, actualizado FROM catalogo WHERE negocio = ?").bind(negocio).first();
+    return r ? { productos: JSON.parse(r.datos), actualizado: Date.parse(r.actualizado) } : null;
+  }
+  async putCatalogo(negocio, productos, actualizadoMs) {
+    await this.db
+      .prepare(
+        "INSERT INTO catalogo (negocio, datos, actualizado) VALUES (?, ?, ?) " +
+          "ON CONFLICT(negocio) DO UPDATE SET datos = excluded.datos, actualizado = excluded.actualizado",
+      )
+      .bind(negocio, JSON.stringify(productos), iso(actualizadoMs))
+      .run();
   }
   async quitarBorradosPendientes(ids) {
     for (const id of ids) await this.db.prepare("DELETE FROM borrados_pendientes WHERE pedido_id = ?").bind(id).run();

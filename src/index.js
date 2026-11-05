@@ -1,5 +1,6 @@
 import { elegirNegocio } from "./negocios/index.js";
 import { D1Store } from "./store.js";
+import { crearNegocioVigente } from "./catalogo.js";
 import { telegramWebhook } from "./telegram.js";
 import { whatsappWebhook } from "./whatsapp.js";
 
@@ -20,6 +21,7 @@ export default {
       fetch: (...a) => fetch(...a),
       esperar: execCtx?.waitUntil ? (p) => execCtx.waitUntil(p) : null,
     };
+    deps.negocioVigente = crearNegocioVigente(negocio, env, deps.fetch, store, deps.ahora);
 
     // De vez en cuando se borran sesiones viejas (datos personales que ya no hacen falta).
     if (Math.random() < 0.02) {

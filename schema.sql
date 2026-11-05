@@ -30,5 +30,11 @@ CREATE TABLE IF NOT EXISTS metricas (
   PRIMARY KEY (dia, negocio, canal, evento)
 );
 CREATE TABLE IF NOT EXISTS borrados_pendientes (
-  pedido_id INTEGER PRIMARY KEY
+  pedido_id INTEGER PRIMARY KEY,
+  clave TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS catalogo (
+  negocio TEXT PRIMARY KEY,
+  datos TEXT NOT NULL,
+  actualizado TEXT NOT NULL
 );
