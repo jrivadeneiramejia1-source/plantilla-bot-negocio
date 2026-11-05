@@ -20,7 +20,13 @@ Todo con datos **inventados** y sin cuentas reales. Claude no vio ni usó ningun
 | Camino de falla en el Worker local con D1 | `wrangler dev --local`, hoja inalcanzable | Pedido guardado, marcado como no copiado, `/reintentar` responde, BORRAR anonimiza; la dirección y la clave no salen en los registros |
 | Las pruebas nuevas detectan fallas | Se quitó la protección de fórmulas y, aparte, el borrado en la hoja | En cada caso 1 prueba falló (bien) |
 
-Total: 48 pruebas automáticas, todas pasan (26 de la base y 22 nuevas de la hoja y el almacén).
+| **— Guía del ensayo en Telegram —** | | |
+| Ayudante `scripts/telegram.mjs` con un Telegram de mentira en este computador | 10 pruebas: `clave` distinta cada vez; `registrar` manda la dirección `/telegram`, la clave y los tipos de mensaje; rechaza token mal escrito, clave mala y direcciones sin https sin tocar el webhook; error de Telegram o sin internet con mensaje claro; `mi-id` ignora grupos y bots y se niega si hay webhook; `estado` y `quitar`; no acepta otra dirección de Telegram que este computador | Pasan; **ni el token ni la clave aparecen nunca en la pantalla** |
+| Entrada con teclado real (terminal simulada) | `registrar` con token y clave escondidos mientras se escriben | Ni el token ni la clave se ven; llamadas correctas |
+| Instalación desde cero y empaquetado | copia limpia de `main`: `npm install --ignore-scripts`, `wrangler --version`, `wrangler deploy --dry-run` | Funcionan; el archivo de versiones incluye Windows, Mac y Linux |
+| Falla provocada | Se hizo que `registrar` imprimiera la clave | 1 prueba falló (bien) |
+
+Total: 58 pruebas automáticas, todas pasan (26 de la base, 22 de la hoja y el almacén, 10 del ayudante de Telegram).
 
 ## Errores encontrados al probar
 - (Hoja) Dos pruebas fallaron al principio por cosas de la propia prueba (SQLite devuelve objetos sin prototipo; el Apps Script corre en otro «reino» de JavaScript); se ajustaron las pruebas, no el código.
@@ -35,6 +41,7 @@ Total: 48 pruebas automáticas, todas pasan (26 de la base y 22 nuevas de la hoj
 - Si Cloudflare pide tarjeta para D1 en cuenta gratis, y los topes diarios con tráfico real.
 - La tarifa de WhatsApp en Colombia y si Meta pide tarjeta o verificación del negocio.
 - Que una persona lea los textos y los encuentre claros (solo se probó que funcionen).
+- **La guía del ensayo** (`docs/GUIA-PILOTO-TELEGRAM.md`): los pasos con Cloudflare (`login`, `d1 create`, `deploy`, `secret put`) y con BotFather no se ejecutaron en una cuenta real; están escritos de memoria. **No se probó en Windows** (el computador del ensayo): ni la instalación de Node (con instalador o con el zip sin permisos), ni `cmd`, ni la entrada escondida del token, ni el bloqueo de PowerShell que se menciona; tampoco en Mac.
 - **La hoja de verdad:** no se desplegó el Apps Script en Google ni se llamó desde el Worker. Se probó con un Google de mentira. No se comprobó que `fetch` siga bien la redirección que responde Apps Script a un POST, ni que los pasos del README coincidan con la pantalla de Google de hoy (se escribieron de memoria).
 - Los topes de Apps Script con tráfico real (tiempo por ejecución, bloqueo) y qué pasa con una hoja de miles de filas (se busca el pedido recorriendo la columna).
 - `gitleaks`: no se pudo instalar en el entorno; se hizo búsqueda manual de patrones de claves y de comandos de riesgo (0 hallazgos). Falta correr `gitleaks`.
