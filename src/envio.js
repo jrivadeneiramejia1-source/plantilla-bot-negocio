@@ -14,10 +14,47 @@ export async function enviarTelegram(env, fetchFn, chatId, texto, opciones) {
   if (!r.ok) throw new Error(`Telegram respondió ${r.status}`); // no se muestra la dirección: lleva el token
 }
 
+/** Números de Telegram de las socias (OWNER_TELEGRAM_ID, separados por coma). Lo que no sea un número se ignora. */
+export function duenas(env) {
+  return new Set(
+    String(env.OWNER_TELEGRAM_ID ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => /^\d{1,15}$/.test(s)),
+  );
+}
+
+/** Número del grupo de Telegram de las socias (ALERTAS_CHAT_ID); los grupos tienen número negativo. */
+export function grupoDeAlertas(env) {
+  const g = String(env.ALERTAS_CHAT_ID ?? "").trim();
+  return /^-\d{5,20}$/.test(g) ? g : "";
+}
+
+/** Avisa al grupo de las socias; si no hay grupo o falla, le escribe a cada socia por privado (así no se pierde el aviso). */
 export function avisarDuenoPorTelegram(env, fetchFn) {
   return async (texto) => {
-    if (!env.TELEGRAM_BOT_TOKEN || !env.OWNER_TELEGRAM_ID) return;
-    await enviarTelegram(env, fetchFn, env.OWNER_TELEGRAM_ID, texto);
+    if (!env.TELEGRAM_BOT_TOKEN) return;
+    let ultimoError = null;
+    const grupo = grupoDeAlertas(env);
+    if (grupo) {
+      try {
+        await enviarTelegram(env, fetchFn, grupo, texto);
+        return;
+      } catch (e) {
+        ultimoError = e;
+        console.error("No se pudo avisar al grupo:", e?.message ?? e);
+      }
+    }
+    let alguna = false;
+    for (const id of duenas(env)) {
+      try {
+        await enviarTelegram(env, fetchFn, id, texto);
+        alguna = true;
+      } catch (e) {
+        ultimoError = e;
+      }
+    }
+    if (!alguna && ultimoError) throw ultimoError;
   };
 }
 
