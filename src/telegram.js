@@ -1,7 +1,7 @@
 import { manejar } from "./core.js";
 import { igualesSeguro } from "./seguridad.js";
 import { crearHoja } from "./sheets.js";
-import { avisarDuenoPorTelegram, enviarTelegram } from "./envio.js";
+import { avisarDuenoPorTelegram, duenas, enviarTelegram } from "./envio.js";
 import { comandoDueno } from "./dueno.js";
 
 const API = "https://api.telegram.org";
@@ -40,8 +40,10 @@ export async function telegramWebhook(request, env, deps) {
   const m = update.message;
   const de = cb?.from ?? m?.from;
   const chat = cb?.message?.chat ?? m?.chat;
-  // Solo chats privados: el bot no atiende grupos.
-  if (!de || !chat || chat.type !== "private" || de.is_bot) return new Response("ok");
+  const privado = chat?.type === "private";
+  const grupo = chat?.type === "group" || chat?.type === "supergroup";
+  // Clientes: solo en chat privado. Grupos: solo para las socias (ver más abajo). Bots: nunca.
+  if (!de || !chat || de.is_bot || !(privado || grupo)) return new Response("ok");
 
   const primera = await deps.store.marcarVisto(`tg:${update.update_id}`, deps.ahora());
   if (!primera) return new Response("ok"); // reintento de Telegram: ya se atendió
@@ -50,11 +52,26 @@ export async function telegramWebhook(request, env, deps) {
     if (cb) await responderCallback(env, deps.fetch, cb.id);
     const texto = cb ? "" : m?.text;
     if (!cb && typeof texto !== "string") {
-      await enviarTelegram(env, deps.fetch, chat.id, "Por ahora solo entiendo texto y botones.");
+      if (privado) await enviarTelegram(env, deps.fetch, chat.id, "Por ahora solo entiendo texto y botones.");
+      return new Response("ok"); // en un grupo, fotos, stickers y avisos de «entró alguien» se ignoran en silencio
+    }
+
+    // /id sirve para saber el número de Telegram de una persona y del chat (hace falta para configurar a las socias y su grupo).
+    if (typeof texto === "string" && /^\/id(@\w+)?\s*$/i.test(texto.trim())) {
+      await enviarTelegram(env, deps.fetch, chat.id, `Tu número de Telegram: ${de.id}\nNúmero de este chat: ${chat.id}`);
       return new Response("ok");
     }
 
-    const esDueno = env.OWNER_TELEGRAM_ID && String(de.id) === String(env.OWNER_TELEGRAM_ID);
+    const esDueno = duenas(env).has(String(de.id));
+
+    if (grupo) {
+      // En un grupo el bot solo obedece a las socias, y solo en el grupo de alertas configurado (ALERTAS_CHAT_ID).
+      if (cb || !esDueno || String(chat.id) !== String(env.ALERTAS_CHAT_ID ?? "").trim()) return new Response("ok");
+      const respuesta = await comandoDueno(texto, env, deps);
+      if (respuesta !== null) await enviarTelegram(env, deps.fetch, chat.id, respuesta);
+      return new Response("ok");
+    }
+
     if (esDueno) {
       const respuesta = await comandoDueno(texto, env, deps);
       if (respuesta !== null) {
