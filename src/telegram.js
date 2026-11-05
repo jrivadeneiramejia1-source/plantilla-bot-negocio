@@ -1,21 +1,12 @@
-import { manejar, resumenDelDia } from "./core.js";
+import { manejar } from "./core.js";
 import { igualesSeguro } from "./seguridad.js";
 import { crearHoja } from "./sheets.js";
+import { avisarDuenoPorTelegram, enviarTelegram } from "./envio.js";
+import { comandoDueno } from "./dueno.js";
 
 const API = "https://api.telegram.org";
 
-export async function enviarTelegram(env, fetchFn, chatId, texto, opciones) {
-  const cuerpo = { chat_id: chatId, text: String(texto).slice(0, 4000) };
-  if (opciones?.length) {
-    cuerpo.reply_markup = { inline_keyboard: opciones.map((o) => [{ text: o.titulo.slice(0, 60), callback_data: o.id }]) };
-  }
-  const r = await fetchFn(`${API}/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(cuerpo),
-  });
-  if (!r.ok) throw new Error(`Telegram respondió ${r.status}`); // no se muestra la dirección: lleva el token
-}
+export { enviarTelegram, avisarDuenoPorTelegram };
 
 async function responderCallback(env, fetchFn, id) {
   try {
@@ -27,13 +18,6 @@ async function responderCallback(env, fetchFn, id) {
   } catch {
     /* solo quita el relojito del botón; no es grave */
   }
-}
-
-export function avisarDuenoPorTelegram(env, fetchFn) {
-  return async (texto) => {
-    if (!env.TELEGRAM_BOT_TOKEN || !env.OWNER_TELEGRAM_ID) return;
-    await enviarTelegram(env, fetchFn, env.OWNER_TELEGRAM_ID, texto);
-  };
 }
 
 /** deps: { store, negocio, ahora(), fetch } */
@@ -71,22 +55,16 @@ export async function telegramWebhook(request, env, deps) {
     }
 
     const esDueno = env.OWNER_TELEGRAM_ID && String(de.id) === String(env.OWNER_TELEGRAM_ID);
-    if (esDueno && texto?.trim().toLowerCase() === "/resumen") {
-      await enviarTelegram(env, deps.fetch, chat.id, await resumenDelDia(deps.store, deps.negocio, deps.ahora()));
-      return new Response("ok");
+    if (esDueno) {
+      const respuesta = await comandoDueno(texto, env, deps);
+      if (respuesta !== null) {
+        await enviarTelegram(env, deps.fetch, chat.id, respuesta);
+        return new Response("ok");
+      }
     }
 
     const hoja = crearHoja(env, deps.fetch, deps.store);
-    if (esDueno && texto?.trim().toLowerCase() === "/reintentar") {
-      const r = hoja ? await hoja.reintentar() : null;
-      await enviarTelegram(
-        env,
-        deps.fetch,
-        chat.id,
-        r ? `Listo: ${r.copiados} copiados a la hoja, ${r.borrados} borrados allá, ${r.fallaron} con error.` : "La hoja no está configurada.",
-      );
-      return new Response("ok");
-    }
+    const negocio = deps.negocioVigente ? await deps.negocioVigente() : deps.negocio; // con los productos de la hoja, si hay
 
     const { mensajes } = await manejar(
       {
@@ -97,7 +75,7 @@ export async function telegramWebhook(request, env, deps) {
         opcion: cb?.data,
       },
       {
-        negocio: deps.negocio,
+        negocio,
         store: deps.store,
         ahora: deps.ahora,
         notificarDueno: avisarDuenoPorTelegram(env, deps.fetch),

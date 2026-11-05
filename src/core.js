@@ -225,10 +225,10 @@ export async function manejar(msg, ctx) {
     if (idsEnHoja.length) {
       // Los datos también están en la hoja del negocio: hay que borrarlos allá. Si falla, queda pendiente.
       try {
-        await ctx.hoja.borrar(idsEnHoja);
+        await ctx.hoja.borrar(idsEnHoja, clave);
       } catch (e) {
         console.error("No se pudo borrar en la hoja:", e?.message ?? e);
-        await store.pendienteBorrarEnHoja(idsEnHoja);
+        await store.pendienteBorrarEnHoja(idsEnHoja, clave);
         try {
           await ctx.notificarDueno("Una persona pidió borrar sus datos y no se pudo borrar en la hoja. Escribe /reintentar para completarlo.");
         } catch {
@@ -242,6 +242,8 @@ export async function manejar(msg, ctx) {
   const existente = await store.getSesion(clave);
   const s = existente ?? sesionNueva(ahora);
   if (!existente) await store.sumarMetrica(diaBogota(ahora), negocio.id, msg.canal, "inicio");
+
+  s.ultimo = ahora; // cuándo escribió por última vez (WhatsApp solo deja contestarle libremente 24 horas después)
 
   // Tope de mensajes por hora (cada respuesta de WhatsApp puede costar plata al negocio).
   if (ahora - s.ventanaInicio > HORA_MS) {

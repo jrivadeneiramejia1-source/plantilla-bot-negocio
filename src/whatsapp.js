@@ -1,5 +1,5 @@
 import { manejar } from "./core.js";
-import { avisarDuenoPorTelegram } from "./telegram.js";
+import { avisarDuenoPorTelegram, enviarWhatsApp } from "./envio.js";
 import { hmacSha256Hex, igualesSeguro } from "./seguridad.js";
 import { crearHoja } from "./sheets.js";
 
@@ -58,16 +58,6 @@ export function armarMensajeWhatsApp(para, texto, opciones = []) {
   ];
 }
 
-async function enviarWhatsApp(env, fetchFn, cuerpo) {
-  const version = env.WA_API_VERSION || "v21.0";
-  const r = await fetchFn(`https://graph.facebook.com/${version}/${env.WA_PHONE_NUMBER_ID}/messages`, {
-    method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${env.WA_TOKEN}` },
-    body: JSON.stringify(cuerpo),
-  });
-  if (!r.ok) throw new Error(`WhatsApp respondió ${r.status}`);
-}
-
 /** deps: { store, negocio, ahora(), fetch, esperar(promesa) } */
 export async function whatsappWebhook(request, env, deps) {
   if (request.method === "GET") {
@@ -104,6 +94,7 @@ export async function whatsappWebhook(request, env, deps) {
 }
 
 async function procesar(cuerpo, env, deps) {
+  const negocio = deps.negocioVigente ? await deps.negocioVigente() : deps.negocio; // con los productos de la hoja, si hay
   for (const entrada of cuerpo.entry ?? []) {
     for (const cambio of entrada.changes ?? []) {
       for (const m of cambio.value?.messages ?? []) {
@@ -122,7 +113,7 @@ async function procesar(cuerpo, env, deps) {
         const { mensajes } = await manejar(
           { canal: "whatsapp", usuario: m.from, contacto: `https://wa.me/${m.from}`, texto, opcion },
           {
-            negocio: deps.negocio,
+            negocio,
             store: deps.store,
             ahora: deps.ahora,
             notificarDueno: avisarDuenoPorTelegram(env, deps.fetch),

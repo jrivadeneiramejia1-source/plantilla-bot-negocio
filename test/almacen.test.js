@@ -56,11 +56,36 @@ for (const [nombre, crear] of Object.entries(ALMACENES)) {
     assert.deepEqual((await s.pedidosSinCopiar()).map((p) => p.id), [id2]);
     assert.deepEqual(await s.idsCopiadosDe("telegram", "u1"), [id1]);
     assert.deepEqual(await s.idsCopiadosDe("telegram", "u2"), []);
-    await s.pendienteBorrarEnHoja([id1]);
-    await s.pendienteBorrarEnHoja([id1]); // repetido: no duplica
-    assert.deepEqual(await s.borradosPendientes(), [id1]);
+    await s.pendienteBorrarEnHoja([id1], "telegram:u1");
+    await s.pendienteBorrarEnHoja([id1], "telegram:u1"); // repetido: no duplica
+    assert.deepEqual(await s.borradosPendientes(), [{ pedido_id: id1, clave: "telegram:u1" }]);
     await s.quitarBorradosPendientes([id1]);
     assert.deepEqual(await s.borradosPendientes(), []);
+  });
+
+  test(`${nombre}: getPedido`, async () => {
+    const s = crear();
+    const id = await s.guardarPedido(pedido());
+    const p = await s.getPedido(id);
+    assert.equal(p.nombre, "Ana");
+    assert.equal(p.canal, "telegram");
+    assert.equal(p.usuario, "u1");
+    assert.equal(p.lineas[0].nombre, "Gorra");
+    assert.equal((await s.getPedido(String(id))).id, id); // también acepta el número escrito como texto
+    assert.equal(await s.getPedido(999), null);
+  });
+
+  test(`${nombre}: catálogo guardado`, async () => {
+    const s = crear();
+    assert.equal(await s.getCatalogo("g"), null);
+    await s.putCatalogo("g", [{ id: "a", nombre: "Uno", precio: 1000, descripcion: "" }], T0);
+    await s.putCatalogo("g", [{ id: "b", nombre: "Dos", precio: 2000, descripcion: "x" }], T0 + 5000);
+    const c = await s.getCatalogo("g");
+    assert.deepEqual(c.productos, [{ id: "b", nombre: "Dos", precio: 2000, descripcion: "x" }]);
+    assert.equal(c.actualizado, T0 + 5000);
+    assert.equal(await s.getCatalogo("otro"), null);
+    await s.putCatalogo("g", [], T0);
+    assert.deepEqual((await s.getCatalogo("g")).productos, []);
   });
 
   test(`${nombre}: limpiar borra sesiones y vistos viejos`, async () => {

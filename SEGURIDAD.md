@@ -23,6 +23,14 @@
 - La dirección del script y el token son secretos de Cloudflare; no se escriben en los registros ni en los mensajes de error.
 - La hoja y Google Apps Script son de la cuenta del cliente; los datos pasan además por Google (servidores fuera de Colombia): decirlo en el aviso.
 
+## Productos desde la hoja y comandos de la dueña
+- Los productos de la pestaña «Productos» los puede editar **cualquiera con acceso de edición a la hoja**: la hoja debe compartirse solo con gente de confianza del negocio. El Worker vuelve a revisar todo lo que lee (código, nombre de hasta 24 letras, precio entero entre 1 y 100.000.000, descripción de hasta 80, máximo 9 productos) y el total de cada pedido se calcula siempre con el catálogo vigente, no con lo que mande el cliente.
+- Si la hoja se vacía o queda mal escrita, el bot conserva el último catálogo bueno; los cambios de la hoja tardan hasta 2 minutos en verse.
+- Los comandos de la dueña (`/avisar`, `/demora`, `/listo`, `/catalogo`, `/reintentar`, `/resumen`) solo se aceptan del número de Telegram en `OWNER_TELEGRAM_ID`; si ese número no está configurado, nadie es dueña. Quien controle esa cuenta de Telegram puede escribirle a los clientes: protegerla con verificación en dos pasos.
+- Los mensajes que la dueña manda a un cliente se limpian (sin saltos ni caracteres de control), se recortan a 500 letras, van como texto plano y solo se envían a personas que hicieron un pedido; nunca a quien pidió borrar sus datos.
+- WhatsApp solo permite mensajes libres 24 horas después del último mensaje del cliente; pasado ese tiempo el bot no manda nada y entrega el enlace para que la dueña escriba ella.
+- La pestaña «Clientes» guarda nombre y contacto de los compradores (datos personales): vive en la cuenta del negocio, y BORRAR la deja sin esa fila.
+
 ## Datos personales de los compradores (Ley 1581 de 2012, habeas data)
 - Qué se guarda: nombre, nota de entrega, contacto (teléfono de WhatsApp o usuario de Telegram) y el pedido. Solo para entregarlo.
 - Se pide aceptación antes de guardar nada. **BORRAR** elimina la sesión y deja los pedidos sin nombre, nota ni contacto (se conserva el valor para la contabilidad).

@@ -8,7 +8,8 @@ Corre gratis en Cloudflare Workers con una base D1. Los negocios de ejemplo son 
 - Aviso de privacidad al primer mensaje (Ley 1581): el cliente debe aceptar. Escribir **BORRAR** elimina sus datos.
 - Menú con botones (también acepta escribir el número de la opción).
 - Pedido con cantidades, resumen, nombre y nota de entrega. Los precios se toman siempre del catálogo, no de lo que mande el cliente.
-- Copia opcional de cada pedido a una **hoja de Google Sheets del cliente** (sin archivo de claves; ver más abajo). BORRAR también borra los datos en la hoja.
+- **Hoja de Google del cliente** (sin archivo de claves; ver más abajo): pedidos, lista de clientes y productos que la dueña edita desde el celular. BORRAR también borra los datos en la hoja.
+- La dueña le escribe a un cliente desde Telegram (`/demora 12 30`, `/listo 12`, `/avisar 12 texto`).
 - Aviso a la dueña por Telegram. Ella escribe `/resumen` y ve los pedidos de hoy y **cuál canal funciona mejor** (conversaciones y pedidos de Telegram contra WhatsApp).
 - Sin IA: son botones. Falla menos y no gasta cupos.
 - Protecciones: clave secreta en Telegram, firma de cada mensaje en WhatsApp, mensajes repetidos no duplican pedidos, tope de 60 mensajes por hora por persona.
@@ -18,7 +19,7 @@ Corre gratis en Cloudflare Workers con una base D1. Los negocios de ejemplo son 
 npm install --ignore-scripts
 npm test
 ```
-Eso corre 58 pruebas con Telegram, WhatsApp y la hoja de Google simulados. (Las del almacén usan `node:sqlite`, que viene con Node 22.5 o más nuevo; saca un aviso de «experimental», es normal.)
+Eso corre 97 pruebas con Telegram, WhatsApp y la hoja de Google simulados. (Las del almacén usan `node:sqlite`, que viene con Node 22.5 o más nuevo; saca un aviso de «experimental», es normal.)
 
 ## Probar el Worker completo en tu computador
 ```bash
@@ -38,17 +39,22 @@ La guía completa, con comandos y qué hacer si algo falla, está en [`docs/GUIA
 4. `npx wrangler deploy` y luego `node scripts/telegram.mjs registrar` (conecta Telegram con la dirección `/telegram` y la clave secreta).
 5. WhatsApp (opcional): requiere una cuenta de Meta Business **a nombre del cliente**. Guarda `WA_TOKEN`, `WA_APP_SECRET` y `WA_VERIFY_TOKEN` como secretos, pon `WA_PHONE_NUMBER_ID` y registra la dirección `/whatsapp` en Meta. **Antes de prometer «gratis», revisa la tarifa vigente de Meta**: desde octubre de 2026 cobra pasado el tope mensual de mensajes de servicio (ver la skill `whatsapp-cloud-api` de `agent-skills-jeiler`).
 
-## Copia a Google Sheets (opcional, la dueña ve sus pedidos en una hoja)
-Cómo funciona: un **Apps Script** (programita de Google) vive **dentro de la hoja del cliente**. El bot le manda cada pedido con una palabra secreta. Así los datos quedan en la cuenta del cliente y no hace falta ningún archivo de claves.
-1. El cliente crea una hoja de Google en **su** cuenta.
-2. Menú **Extensiones → Apps Script** (Extensions → Apps Script). Borra lo que haya y pega el contenido de `apps-script/Codigo.gs`.
-3. **Configuración del proyecto → Propiedades de la secuencia de comandos** (Project Settings → Script properties): crea la propiedad `TOKEN` con una palabra larga inventada (la escribe el cliente; no la mandes por chat).
-4. **Implementar → Nueva implementación → Aplicación web** (Deploy → New deployment → Web app). *Ejecutar como:* yo (Me). *Quién tiene acceso:* cualquier persona (Anyone). Copia la dirección que termina en `/exec`.
-5. En tu terminal: `npx wrangler secret put SHEETS_URL` (pega esa dirección) y `npx wrangler secret put SHEETS_TOKEN` (la misma palabra del paso 3), y `npx wrangler deploy`.
-- La hoja crea sola la pestaña «Pedidos». Si la copia falla, el pedido igual se guarda y la dueña recibe un aviso; con `/reintentar` por Telegram se copian los que faltan (y se completan los borrados pendientes).
-- El bot solo manda la clave a direcciones de `script.google.com`.
-- «Cualquier persona» en el paso 4 significa que cualquiera que conozca la dirección puede intentar escribir, pero sin la palabra secreta el script lo rechaza. Trata la dirección como secreta.
+## Hoja de Google: pedidos, clientes y productos que se editan desde el celular
+Un **Apps Script** (programita de Google) vive **dentro de la hoja del cliente**. Así los datos quedan en su cuenta y no hace falta ningún archivo de claves. Tres pestañas:
+- **Productos:** el catálogo. La dueña cambia nombres, precios y «Activo (Sí/No)» desde la app de Google Sheets; el bot lo usa en unos 2 minutos. Si la hoja falla o queda vacía, el bot conserva el último menú bueno.
+- **Pedidos:** una fila por pedido.
+- **Clientes:** una fila por cliente (nombre, contacto, cuántos pedidos y cuánto ha comprado).
+
+Guía paso a paso (y la parte para la dueña): [`docs/GUIA-HOJA-GOOGLE.md`](docs/GUIA-HOJA-GOOGLE.md).
+- Si la copia de un pedido falla, el pedido igual se guarda y la dueña recibe un aviso; `/reintentar` copia los que faltan y completa los borrados pendientes.
+- BORRAR también borra en la hoja (pedidos en blanco y cliente fuera de «Clientes»).
+- El bot solo manda la clave a direcciones de `script.google.com`; trata la dirección del script como secreta.
+- Base ya publicada antes de esta versión: corre una vez `migraciones/2026-11-05-catalogo-y-avisos.sql`.
 - **Estos pasos están escritos de memoria y no se verificaron en la pantalla de Google hoy**: los nombres de los menús pueden variar.
+
+## Comandos de la dueña (por Telegram, solo desde `OWNER_TELEGRAM_ID`)
+`/resumen` pedidos de hoy y qué canal vende más · `/demora 12 30` y `/listo 12` avisan al cliente · `/avisar 12 texto` le escribe lo que quieras · `/catalogo` revisa la hoja de productos · `/reintentar` copia a la hoja lo pendiente · `/ayuda` la lista.
+**WhatsApp:** solo se le puede escribir a un cliente dentro de las 24 horas siguientes a su último mensaje; pasado ese tiempo el bot te da el enlace para que le escribas tú.
 
 ## Límites que debes decirle al cliente
 - WhatsApp: gratis solo hasta el tope mensual de Meta; después, él paga directo a Meta.
@@ -56,6 +62,6 @@ Cómo funciona: un **Apps Script** (programita de Google) vive **dentro de la ho
 - Los datos viven en Cloudflare, Telegram y Meta (fuera de Colombia). Hay que decirlo en el aviso de privacidad.
 
 ## Estructura
-`src/core.js` conversación · `src/telegram.js` y `src/whatsapp.js` canales · `src/sheets.js` copia a Google Sheets · `apps-script/Codigo.gs` lo que se pega en la hoja · `src/store.js` base de datos · `src/negocios/` catálogos · `test/` pruebas · `schema.sql` tablas.
+`src/core.js` conversación · `src/telegram.js` y `src/whatsapp.js` canales · `src/sheets.js` hoja de Google · `src/catalogo.js` productos desde la hoja · `src/dueno.js` comandos de la dueña · `src/envio.js` envío de mensajes · `apps-script/Codigo.gs` lo que se pega en la hoja · `src/store.js` base de datos · `src/negocios/` catálogos · `test/` pruebas · `schema.sql` tablas.
 
 Licencia MIT. Ver `PRUEBAS.md` (qué se probó y qué no) y `SEGURIDAD.md`.

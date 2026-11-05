@@ -38,20 +38,42 @@ async function llamar(env, fetchFn, cuerpo) {
 
 const resumenProductos = (lineas) => lineas.map((l) => `${l.cant} × ${l.nombre}`).join("; ");
 
-/** Devuelve { copiar(id, pedido), borrar(ids), reintentar() } o null si no hay hoja configurada. */
+/** Devuelve { copiar, borrar, catalogo, sembrar, reintentar } o null si no hay hoja configurada. */
 export function crearHoja(env, fetchFn, store) {
   if (!hojaConfigurada(env)) return null;
 
   async function copiar(id, p) {
     await llamar(env, fetchFn, {
       accion: "agregar",
-      pedido: { id, creado: p.creado, canal: p.canal, nombre: p.nombre, contacto: p.contacto, productos: resumenProductos(p.lineas), total: p.total, nota: p.nota },
+      pedido: {
+        id,
+        clave: p.usuario && p.usuario !== "(borrado)" ? `${p.canal}:${p.usuario}` : "", // quién es el cliente (para la pestaña Clientes)
+        creado: p.creado,
+        canal: p.canal,
+        nombre: p.nombre,
+        contacto: p.contacto,
+        productos: resumenProductos(p.lineas),
+        total: p.total,
+        nota: p.nota,
+      },
     });
     await store.marcarCopiado(id);
   }
 
-  async function borrar(ids) {
-    await llamar(env, fetchFn, { accion: "borrar", ids });
+  async function borrar(ids, clave = "") {
+    await llamar(env, fetchFn, { accion: "borrar", ids, clave });
+  }
+
+  // Productos activos y válidos de la pestaña «Productos» (la edita la dueña desde el celular).
+  async function catalogo() {
+    const j = await llamar(env, fetchFn, { accion: "catalogo" });
+    return { productos: Array.isArray(j.productos) ? j.productos : [], filas: Number(j.filas) || 0, avisos: Array.isArray(j.avisos) ? j.avisos.map(String) : [] };
+  }
+
+  // Copia productos de ejemplo a la hoja, solo si la pestaña está vacía.
+  async function sembrar(productos) {
+    const j = await llamar(env, fetchFn, { accion: "sembrar", productos });
+    return { sembrados: Number(j.sembrados) || 0, yaTenia: Boolean(j.yaTenia) };
   }
 
   async function reintentar() {
@@ -66,18 +88,20 @@ export function crearHoja(env, fetchFn, store) {
       }
     }
     const pendientes = await store.borradosPendientes();
-    if (pendientes.length) {
+    const porClave = new Map();
+    for (const x of pendientes) porClave.set(x.clave, [...(porClave.get(x.clave) ?? []), x.pedido_id]);
+    for (const [clave, ids] of porClave) {
       try {
-        await borrar(pendientes);
-        await store.quitarBorradosPendientes(pendientes);
-        r.borrados = pendientes.length;
+        await borrar(ids, clave);
+        await store.quitarBorradosPendientes(ids);
+        r.borrados += ids.length;
       } catch (e) {
-        r.fallaron += pendientes.length;
+        r.fallaron += ids.length;
         console.error("Reintento de borrado falló:", e?.message ?? e);
       }
     }
     return r;
   }
 
-  return { copiar, borrar, reintentar };
+  return { copiar, borrar, catalogo, sembrar, reintentar };
 }
