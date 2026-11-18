@@ -76,7 +76,7 @@ Te pide el token, la misma clave inventada y la dirección del paso 6. (Le dice 
 
 ## 9. Probarlo (con datos inventados)
 1. Escríbele «hola»: debe mostrar el **aviso de privacidad** con «Acepto».
-2. Acepta, pide algo del menú (flores de foami de ejemplo), responde las preguntas una por una con datos inventados (nombre, celular como 300 123 4567, dirección y nota; prueba también el botón «Compartir mi número» con tu propio número) y envía el pedido.
+2. Acepta, pide algo del menú (flores de foami de ejemplo), responde las preguntas una por una con datos inventados (nombre, celular como 300 123 4567, dirección y nota) y envía el pedido.
 3. A ti te debe llegar el aviso «Pedido nuevo #1».
 4. Escribe `/resumen`: cuenta de hoy. Escribe `BORRAR`: borra tus datos.
 5. Anota: ¿contestó rápido? ¿se entendieron los textos? ¿algo te confundió?

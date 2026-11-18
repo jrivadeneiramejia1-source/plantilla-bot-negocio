@@ -38,12 +38,13 @@ async function hastaCelular(ctx, usuario = "u", canal = "telegram") {
   return dice(ctx, usuario, "Ana Inventada", canal);
 }
 
-test("Telegram: el celular se pide aparte, con botón para compartirlo, y se guarda bien", async () => {
+test("Telegram: el celular se pide aparte, la persona lo escribe (sin botón de compartir), y se guarda bien", async () => {
   const ctx = crearCtx(GORRAS);
   const pide = await hastaCelular(ctx);
   assert.match(pide.texto, /celular/);
-  assert.equal(pide.pedirNumero, true);
-  assert.deepEqual(pide.opciones, []);
+  assert.match(pide.texto, /10 dígitos/);
+  assert.doesNotMatch(pide.texto, /Compartir/);
+  assert.deepEqual(pide.opciones.map((o) => o.id), ["tel:no"]); // solo «Prefiero no darlo»
 
   const dir = await dice(ctx, "u", "+57 300 123 4567");
   assert.match(dir.texto, /dirección/);
@@ -66,7 +67,7 @@ test("Telegram: un número mal escrito se pide una vez más; si falla otra vez, 
   await hastaCelular(ctx);
   const otra = await dice(ctx, "u", "mi numero es ese");
   assert.match(otra.texto, /No pude leer ese número/);
-  assert.equal(otra.pedirNumero, true);
+  assert.deepEqual(otra.opciones.map((o) => o.id), ["tel:no"]);
   const sigue = await dice(ctx, "u", "123");
   assert.match(sigue.texto, /sigo sin él/);
   assert.match(sigue.texto, /dirección/);
@@ -79,13 +80,15 @@ test("Telegram: un número mal escrito se pide una vez más; si falla otra vez, 
   assert.match(ctx.avisos[0], /Contacto: \(escribirle por el mismo canal\)/);
 });
 
-test("Telegram: «Prefiero no darlo» salta el celular sin insistir", async () => {
-  const ctx = crearCtx(GORRAS);
-  await hastaCelular(ctx);
-  const dir = await dice(ctx, "u", "Prefiero no darlo");
-  assert.match(dir.texto, /dirección/);
-  assert.doesNotMatch(dir.texto, /No pude leer/);
-  assert.equal((await ctx.store.getSesion("telegram:u")).telefono, "");
+test("Telegram: «Prefiero no darlo» (botón o escrito) salta el celular sin insistir", async () => {
+  for (const paso of [(ctx) => toca(ctx, "u", "tel:no"), (ctx) => dice(ctx, "u", "Prefiero no darlo"), (ctx) => dice(ctx, "u", "no")]) {
+    const ctx = crearCtx(GORRAS);
+    await hastaCelular(ctx);
+    const dir = await paso(ctx);
+    assert.match(dir.texto, /dirección/);
+    assert.doesNotMatch(dir.texto, /No pude leer/);
+    assert.equal((await ctx.store.getSesion("telegram:u")).telefono, "");
+  }
 });
 
 test("la dirección no puede quedar vacía, y un @usuario de Telegram se conserva como contacto", async () => {
@@ -105,16 +108,7 @@ test("la dirección no puede quedar vacía, y un @usuario de Telegram se conserv
   assert.match(ctx.avisos.at(-1), /Contacto: @ana_inventada/);
 });
 
-test("salir del paso del celular (menú o cancelar) esconde el teclado de Telegram", async () => {
-  const ctx = crearCtx(GORRAS);
-  await hastaCelular(ctx);
-  const r = await manejar({ canal: "telegram", usuario: "u", texto: "/cancelar" }, ctx);
-  assert.equal(r.mensajes[0].quitarTeclado, true);
-  assert.match(r.mensajes[1].texto, /Pedido cancelado/);
-  assert.ok(r.mensajes[1].opciones.length); // el menú con sus botones
-});
-
-// ---------- el botón de Telegram, de punta a punta por el webhook ----------
+// ---------- Telegram de punta a punta por el webhook ----------
 function mundoTelegram() {
   const store = new MemoryStore();
   const salidas = [];
@@ -144,69 +138,48 @@ async function aCelular(m, de) {
   return m.texto(de, "Ana Inventada");
 }
 
-test("Telegram real (simulado): el mensaje del celular trae el botón «Compartir mi número»", async () => {
+test("Telegram real (simulado): el celular se pide por escrito, sin botón de compartir contacto", async () => {
   const m = mundoTelegram();
   const [pide] = await aCelular(m, 55);
-  const teclado = pide.cuerpo.reply_markup;
-  assert.equal(teclado.keyboard[0][0].request_contact, true);
-  assert.equal(teclado.keyboard[1][0].text, "Prefiero no darlo");
-  assert.equal(teclado.one_time_keyboard, true);
-  assert.equal(teclado.resize_keyboard, true);
-  assert.ok(teclado.input_field_placeholder.length <= 64);
-});
-
-test("Telegram real (simulado): el contacto compartido se acepta si es de la misma persona; el teclado se esconde", async () => {
-  const m = mundoTelegram();
-  await aCelular(m, 55);
-  const [dir] = await m.contacto(55, { phone_number: "573001234567", first_name: "Ana", user_id: 55 });
+  assert.match(pide.cuerpo.text, /Escríbelo con 10 dígitos/);
+  assert.deepEqual(pide.cuerpo.reply_markup.inline_keyboard, [[{ text: "Prefiero no darlo", callback_data: "tel:no" }]]);
+  assert.ok(!JSON.stringify(pide.cuerpo).includes("request_contact"));
+  const [dir] = await m.texto(55, "311 616 9213");
   assert.match(dir.cuerpo.text, /dirección/);
-  assert.deepEqual(dir.cuerpo.reply_markup, { remove_keyboard: true });
-  assert.equal((await m.store.getSesion("telegram:55")).telefono, "300 123 4567");
+  assert.deepEqual(dir.cuerpo.reply_markup, { remove_keyboard: true }); // limpia un teclado viejo si había quedado
+  assert.equal((await m.store.getSesion("telegram:55")).telefono, "311 616 9213");
 });
 
-test("Telegram real (simulado): un contacto de otra persona o sin dueño se rechaza y no avanza", async () => {
+test("Telegram real (simulado): una tarjeta de contacto no se usa como celular; el bot sigue esperando el número escrito", async () => {
   const m = mundoTelegram();
   await aCelular(m, 55);
-  for (const falso of [
-    { phone_number: "573001112222", first_name: "Otra", user_id: 56 }, // contacto reenviado de otra persona
-    { phone_number: "573001112222", first_name: "Sin cuenta" }, // sin user_id
-  ]) {
-    const [r] = await m.contacto(55, falso);
-    assert.match(r.cuerpo.text, /Solo puedo usar tu propio número/);
-  }
+  const [r] = await m.contacto(55, { phone_number: "573001112222", first_name: "Otra", user_id: 56 });
+  assert.match(r.cuerpo.text, /solo entiendo texto y botones/);
   const s = await m.store.getSesion("telegram:55");
   assert.equal(s.paso, "telefono");
   assert.equal(s.telefono, "");
+  const grupo = await m.contacto(55, { phone_number: "573001112222", first_name: "X" }, { id: -1001234567890, type: "supergroup" });
+  assert.deepEqual(grupo, []); // en un grupo se ignora en silencio
 });
 
-test("Telegram real (simulado): un contacto en un grupo se ignora", async () => {
+test("Telegram real (simulado): el botón «Prefiero no darlo» sigue sin celular", async () => {
   const m = mundoTelegram();
-  const r = await m.contacto(55, { phone_number: "573001234567", first_name: "Ana", user_id: 55 }, { id: -1001234567890, type: "supergroup" });
-  assert.deepEqual(r, []);
+  await aCelular(m, 55);
+  const [dir] = await m.boton(55, "tel:no");
+  assert.match(dir.cuerpo.text, /dirección/);
+  assert.equal((await m.store.getSesion("telegram:55")).telefono, "");
 });
 
-test("Telegram real (simulado): el contacto fuera del paso del celular no cambia nada", async () => {
-  const m = mundoTelegram();
-  await m.texto(55, "hola");
-  await m.boton(55, "ok");
-  await m.contacto(55, { phone_number: "573001234567", first_name: "Ana", user_id: 55 });
-  const s = await m.store.getSesion("telegram:55");
-  assert.equal(s.telefono, "");
-  assert.equal(s.paso, "menu");
-});
-
-test("enviarTelegram: botones normales tienen prioridad; sin botones, el teclado de contacto o quitarlo", async () => {
+test("enviarTelegram: con botones usa botones; sin botones, solo esconde un teclado viejo si se pide", async () => {
   const llamadas = [];
   const f = async (u, init) => (llamadas.push(JSON.parse(init.body)), new Response("{}", { status: 200 }));
   const env = { TELEGRAM_BOT_TOKEN: "tok" };
-  await enviarTelegram(env, f, 1, "a", [{ id: "x", titulo: "X" }], { pedirNumero: true });
-  await enviarTelegram(env, f, 1, "b", [], { pedirNumero: true });
+  await enviarTelegram(env, f, 1, "a", [{ id: "x", titulo: "X" }], { quitarTeclado: true });
   await enviarTelegram(env, f, 1, "c", [], { quitarTeclado: true });
   await enviarTelegram(env, f, 1, "d");
   assert.ok(llamadas[0].reply_markup.inline_keyboard);
-  assert.ok(llamadas[1].reply_markup.keyboard);
-  assert.deepEqual(llamadas[2].reply_markup, { remove_keyboard: true });
-  assert.equal(llamadas[3].reply_markup, undefined);
+  assert.deepEqual(llamadas[1].reply_markup, { remove_keyboard: true });
+  assert.equal(llamadas[2].reply_markup, undefined);
 });
 
 // ---------- WhatsApp ----------
@@ -221,7 +194,6 @@ test("WhatsApp: se confirma el mismo número en vez de pedirlo (3 botones que ca
   const pide = await waHastaCelular(ctx, "573001112233");
   assert.deepEqual(pide.opciones.map((o) => o.id), ["tel:mismo", "tel:otro", "tel:no"]);
   assert.ok(pide.opciones.every((o) => o.titulo.length <= 20));
-  assert.ok(!pide.pedirNumero);
   const msg = armarMensajeWhatsApp("573001112233", pide.texto, pide.opciones)[0];
   assert.equal(msg.interactive.type, "button");
 

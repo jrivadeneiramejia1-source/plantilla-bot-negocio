@@ -49,7 +49,7 @@ export function limpiar(texto, max) {
 /**
  * Celular de Colombia: 10 dígitos que empiezan por 3, con o sin 57 / +57 delante. Devuelve "300 123 4567" o null.
  * Con `abierto` también acepta números de otros países (8 a 15 dígitos) y los devuelve como "+dígitos";
- * se usa solo cuando el canal ya garantiza que el número es de la persona (botón de Telegram, número de WhatsApp).
+ * se usa solo con el número de WhatsApp de la persona (viene con el mensaje, no lo escribe ella).
  */
 export function normalizarCelular(texto, abierto = false) {
   let d = String(texto ?? "").replace(/\D/g, "");
@@ -167,8 +167,8 @@ function mNombre() {
   return { texto: "¿A nombre de quién va el pedido?", opciones: [] };
 }
 
-// Una sola pregunta. En Telegram el bot no conoce el celular: se ofrece el botón «Compartir mi número».
-// En WhatsApp el número de la persona ya llega con el mensaje: solo se confirma.
+// Una sola pregunta. En Telegram la persona escribe su celular (el bot no lo conoce); en WhatsApp el número ya llega
+// con el mensaje: solo se confirma. En los dos canales se puede elegir no darlo.
 function mTelefono(s, repetir = false) {
   const intro = repetir ? "No pude leer ese número. Escríbelo con 10 dígitos, por ejemplo 300 123 4567.\n" : "";
   if (s.canal === "whatsapp") {
@@ -182,9 +182,8 @@ function mTelefono(s, repetir = false) {
     };
   }
   return {
-    texto: `${intro}¿A qué celular te escribimos si hay algo del pedido? Toca «Compartir mi número» o escríbelo (10 dígitos).`,
-    opciones: [],
-    pedirNumero: true,
+    texto: `${intro}¿A qué celular te escribimos si hay algo del pedido? Escríbelo con 10 dígitos, por ejemplo 300 123 4567.`,
+    opciones: [{ id: "tel:no", titulo: "Prefiero no darlo" }],
   };
 }
 
@@ -335,7 +334,6 @@ export async function manejar(msg, ctx) {
   if (!existente) await store.sumarMetrica(diaBogota(ahora), negocio.id, msg.canal, "inicio");
 
   s.canal = msg.canal; // para saber qué preguntar (en WhatsApp ya tenemos el número; en Telegram no)
-  const pasoAntes = s.paso;
   s.ultimo = ahora; // cuándo escribió por última vez (WhatsApp solo deja contestarle libremente 24 horas después)
 
   // Tope de mensajes por hora (cada respuesta de WhatsApp puede costar plata al negocio).
@@ -376,7 +374,7 @@ export async function manejar(msg, ctx) {
   const aDireccion = (prefijo = "") => {
     s.paso = PASOS.DIRECCION;
     const m = mDireccion(negocio);
-    decir({ ...m, texto: prefijo + m.texto, quitarTeclado: true }); // quitarTeclado: en Telegram esconde el botón de compartir número
+    decir({ ...m, texto: prefijo + m.texto, quitarTeclado: true }); // quitarTeclado: esconde un teclado de botones que haya quedado de versiones anteriores
   };
   const aNombre = (prefijo = "") => {
     s.paso = PASOS.NOMBRE;
@@ -417,8 +415,7 @@ export async function manejar(msg, ctx) {
         decir(mTelefono(s));
       }
     } else if (s.paso === PASOS.TELEFONO) {
-      // msg.telefono: el canal ya comprobó que es el número de la persona (botón de Telegram).
-      const tel = normalizarCelular(msg.telefono ?? dato, Boolean(msg.telefono));
+      const tel = normalizarCelular(dato);
       if (tel) {
         s.telefono = tel;
         aDireccion();
@@ -497,7 +494,7 @@ export async function manejar(msg, ctx) {
     } else decir({ texto: "Escribe el número con 10 dígitos, por ejemplo 300 123 4567.", opciones: [{ id: "tel:no", titulo: "Prefiero no darlo" }] });
   } else if (accion === "tel:otro" && s.paso === PASOS.TELEFONO && s.canal === "whatsapp") {
     decir({ texto: "Escribe el número con 10 dígitos, por ejemplo 300 123 4567.", opciones: [{ id: "tel:no", titulo: "Prefiero no darlo" }] });
-  } else if (accion === "tel:no" && s.paso === PASOS.TELEFONO && s.canal === "whatsapp") {
+  } else if (accion === "tel:no" && s.paso === PASOS.TELEFONO) {
     s.telefono = "";
     aDireccion();
   } else if (accion === "sinnota" && s.paso === PASOS.NOTA) {
@@ -548,11 +545,6 @@ export async function manejar(msg, ctx) {
   } else {
     const p = pregunta(s, negocio);
     decir(aviso ? { ...p, texto: aviso + p.texto } : p);
-  }
-
-  // Si la persona salió del paso del celular sin usar el botón de Telegram, se esconde ese teclado.
-  if (pasoAntes === PASOS.TELEFONO && s.canal === "telegram" && s.paso !== PASOS.TELEFONO && out[0]?.opciones?.length && !out[0].quitarTeclado) {
-    out.unshift({ texto: "Listo.", quitarTeclado: true });
   }
 
   const ultimo = out[out.length - 1];

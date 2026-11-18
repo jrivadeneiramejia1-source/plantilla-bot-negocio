@@ -50,16 +50,7 @@ export async function telegramWebhook(request, env, deps) {
 
   try {
     if (cb) await responderCallback(env, deps.fetch, cb.id);
-    // Botón «Compartir mi número»: solo se acepta si el contacto es de la misma persona que escribe (no uno reenviado).
-    let telefono;
-    if (!cb && privado && m?.contact) {
-      if (m.contact.user_id !== undefined && String(m.contact.user_id) === String(de.id) && m.contact.phone_number) telefono = String(m.contact.phone_number);
-      else {
-        await enviarTelegram(env, deps.fetch, chat.id, "Solo puedo usar tu propio número. Toca «Compartir mi número» o escríbelo.");
-        return new Response("ok");
-      }
-    }
-    const texto = cb ? "" : (m?.text ?? (telefono ? "" : undefined));
+    const texto = cb ? "" : m?.text;
     if (!cb && typeof texto !== "string") {
       if (privado) await enviarTelegram(env, deps.fetch, chat.id, "Por ahora solo entiendo texto y botones.");
       return new Response("ok"); // en un grupo, fotos, stickers y avisos de «entró alguien» se ignoran en silencio
@@ -98,7 +89,6 @@ export async function telegramWebhook(request, env, deps) {
         usuario: String(de.id),
         contacto: de.username ? `@${de.username}` : "",
         texto,
-        telefono,
         opcion: cb?.data,
       },
       {
