@@ -42,6 +42,8 @@ async function hacerPedido(m, cliente = 555) {
   await m.boton(cliente, "c:1");
   await m.boton(cliente, "fin");
   await m.privado(cliente, "Ana Inventada");
+  await m.privado(cliente, "3001234567");
+  await m.privado(cliente, "Calle Inventada 1");
   await m.boton(cliente, "sinnota");
   return m.boton(cliente, "enviar");
 }

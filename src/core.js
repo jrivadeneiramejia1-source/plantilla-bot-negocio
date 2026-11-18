@@ -4,6 +4,7 @@
 
 export const LIMITES = {
   nombre: 60,
+  direccion: 150,
   nota: 300,
   maxCantidad: 99,
   mensajesPorHora: 60,
@@ -17,11 +18,15 @@ const PASOS = {
   CONSENTIMIENTO: "consentimiento",
   MENU: "menu",
   CANTIDAD: "cantidad",
+  SUGERENCIA: "sugerencia",
   NOMBRE: "nombre",
+  TELEFONO: "telefono",
+  DIRECCION: "direccion",
   NOTA: "nota",
   CONFIRMAR: "confirmar",
 };
-const PASOS_DE_TEXTO = new Set([PASOS.NOMBRE, PASOS.NOTA, PASOS.CANTIDAD]);
+const PASOS_DE_TEXTO = new Set([PASOS.NOMBRE, PASOS.TELEFONO, PASOS.DIRECCION, PASOS.NOTA, PASOS.CANTIDAD]);
+const SIN_CELULAR = new Set(["prefiero no darlo", "no", "no tengo", "no quiero", "omitir", "ninguno", "sin celular", "sin numero", "sin número"]);
 
 const ATAJOS_MENU = new Set(["hola", "menu", "menú", "inicio", "buenas", "buenos dias", "buenos días", "buenas tardes", "buenas noches", "/start", "/menu"]);
 const ATAJOS_VER = new Set(["pedido", "mi pedido", "/pedido"]);
@@ -41,6 +46,20 @@ export function limpiar(texto, max) {
     .slice(0, max);
 }
 
+/**
+ * Celular de Colombia: 10 dígitos que empiezan por 3, con o sin 57 / +57 delante. Devuelve "300 123 4567" o null.
+ * Con `abierto` también acepta números de otros países (8 a 15 dígitos) y los devuelve como "+dígitos";
+ * se usa solo cuando el canal ya garantiza que el número es de la persona (botón de Telegram, número de WhatsApp).
+ */
+export function normalizarCelular(texto, abierto = false) {
+  let d = String(texto ?? "").replace(/\D/g, "");
+  if (d.startsWith("0057")) d = d.slice(2);
+  if (d.length === 12 && d.startsWith("57")) d = d.slice(2);
+  if (d.length === 10 && d.startsWith("3")) return `${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6)}`;
+  if (abierto && d.length >= 8 && d.length <= 15) return `+${d}`;
+  return null;
+}
+
 export function diaBogota(ahoraMs) {
   return new Date(ahoraMs - BOGOTA_MS).toISOString().slice(0, 10);
 }
@@ -51,6 +70,9 @@ export function validarNegocio(n) {
   if (!/^[a-z0-9-]+$/.test(n.id ?? "")) errores.push("id inválido (solo minúsculas, números y guiones)");
   for (const campo of ["nombre", "saludo", "entrega", "cierre"]) {
     if (typeof n[campo] !== "string" || !n[campo].trim()) errores.push(`falta ${campo}`);
+  }
+  if (n.preguntaNota !== undefined && (typeof n.preguntaNota !== "string" || !n.preguntaNota.trim() || n.preguntaNota.length > 200)) {
+    errores.push("preguntaNota debe ser un texto de hasta 200 letras");
   }
   const ps = n.productos;
   if (!Array.isArray(ps) || ps.length < 1) errores.push("sin productos");
@@ -65,6 +87,13 @@ export function validarNegocio(n) {
       if (!Number.isInteger(p.precio) || p.precio <= 0) errores.push(`precio inválido: ${p.id}`);
     }
   }
+  if (n.sugerencia !== undefined) {
+    if (!n.sugerencia || typeof n.sugerencia.producto !== "string" || !(ps ?? []).some((p) => p.id === n.sugerencia.producto)) {
+      errores.push("sugerencia.producto debe ser el id de un producto del negocio");
+    }
+    const t = n.sugerencia?.texto;
+    if (t !== undefined && (typeof t !== "string" || !t.trim() || t.length > 120)) errores.push("sugerencia.texto debe ser un texto de hasta 120 letras");
+  }
   return errores;
 }
 
@@ -75,7 +104,11 @@ function sesionNueva(ahora) {
     carrito: [],
     pendiente: null,
     nombre: "",
+    telefono: "",
+    telIntentos: 0,
+    direccion: "",
     nota: "",
+    sugeridoYa: false,
     opciones: [],
     ventanaInicio: ahora,
     ventanaN: 0,
@@ -86,7 +119,7 @@ function sesionNueva(ahora) {
 function mAviso(negocio) {
   return {
     texto:
-      `Hola, soy el asistente de ${negocio.nombre}. Para tomar tu pedido guardaré tu nombre, tus notas de entrega y tu contacto, ` +
+      `Hola, soy el asistente de ${negocio.nombre}. Para tomar tu pedido guardaré tu nombre, tu celular (si quieres darlo), tu dirección de entrega y tus notas, ` +
       `solo para entregártelo; no los comparto con nadie más. Escribe BORRAR en cualquier momento y los elimino. ¿Aceptas?`,
     opciones: [
       { id: "ok", titulo: "Acepto" },
@@ -134,17 +167,64 @@ function mNombre() {
   return { texto: "¿A nombre de quién va el pedido?", opciones: [] };
 }
 
-function mNota(negocio) {
+// Una sola pregunta. En Telegram el bot no conoce el celular: se ofrece el botón «Compartir mi número».
+// En WhatsApp el número de la persona ya llega con el mensaje: solo se confirma.
+function mTelefono(s, repetir = false) {
+  const intro = repetir ? "No pude leer ese número. Escríbelo con 10 dígitos, por ejemplo 300 123 4567.\n" : "";
+  if (s.canal === "whatsapp") {
+    return {
+      texto: `${intro}¿Te escribimos a este mismo número si hay algo del pedido?`,
+      opciones: [
+        { id: "tel:mismo", titulo: "Sí, este número" },
+        { id: "tel:otro", titulo: "Otro número" },
+        { id: "tel:no", titulo: "Prefiero no darlo" },
+      ],
+    };
+  }
   return {
-    texto: `${negocio.entrega}\nEscribe la dirección de entrega y un teléfono de contacto, o cualquier nota. Si no tienes nada que agregar, toca «Sin nota».`,
+    texto: `${intro}¿A qué celular te escribimos si hay algo del pedido? Toca «Compartir mi número» o escríbelo (10 dígitos).`,
+    opciones: [],
+    pedirNumero: true,
+  };
+}
+
+function mDireccion(negocio) {
+  return { texto: `${negocio.entrega}\n¿A qué dirección lo llevamos? Escribe barrio, calle y algún detalle. Si lo recoges tú, escribe «Recojo».`, opciones: [] };
+}
+
+function mNota(negocio) {
+  const pregunta = negocio.preguntaNota ?? "¿Algo más que debamos saber de tu pedido?";
+  return {
+    texto: `${pregunta}\nSi no tienes nada que agregar, toca «Sin nota».`,
     opciones: [{ id: "sinnota", titulo: "Sin nota" }],
+  };
+}
+
+// Producto que el negocio sugiere antes de pedir los datos. Solo si existe hoy en el catálogo y todavía no está en el pedido.
+function sugerido(s, negocio) {
+  const id = negocio.sugerencia?.producto;
+  const p = id ? producto(negocio, id) : null;
+  if (!p || s.sugeridoYa || s.carrito.some((l) => l.id === p.id)) return null;
+  return p;
+}
+
+function mSugerencia(negocio, p) {
+  const texto = negocio.sugerencia.texto || `¿Le agregas ${p.nombre}?`;
+  return {
+    texto: `${texto} (${pesos(p.precio)})`,
+    opciones: [
+      { id: "sug:si", titulo: "Sí, agregar" },
+      { id: "sug:no", titulo: "No, gracias" },
+    ],
   };
 }
 
 function mResumen(s, negocio) {
   const { texto, total } = mLineas(s, negocio);
   return {
-    texto: `Revisa tu pedido:\n${texto}\nTotal: ${pesos(total)}\nA nombre de: ${s.nombre}\nNota: ${s.nota || "(ninguna)"}`,
+    texto:
+      `Revisa tu pedido:\n${texto}\nTotal: ${pesos(total)}\nA nombre de: ${s.nombre}\n` +
+      `Celular: ${s.telefono || "(no lo diste)"}\nDirección: ${s.direccion || "(no la diste)"}\nNota: ${s.nota || "(ninguna)"}`,
     opciones: [
       { id: "enviar", titulo: "Enviar pedido" },
       { id: "cancelar", titulo: "Cancelar" },
@@ -156,7 +236,13 @@ function pregunta(s, negocio) {
   switch (s.paso) {
     case PASOS.CONSENTIMIENTO: return mAviso(negocio);
     case PASOS.CANTIDAD: return producto(negocio, s.pendiente) ? mCantidad(s, negocio) : mMenu(s, negocio);
+    case PASOS.SUGERENCIA: {
+      const p = negocio.sugerencia ? producto(negocio, negocio.sugerencia.producto) : null;
+      return p ? mSugerencia(negocio, p) : mNombre();
+    }
     case PASOS.NOMBRE: return mNombre();
+    case PASOS.TELEFONO: return mTelefono(s);
+    case PASOS.DIRECCION: return mDireccion(negocio);
     case PASOS.NOTA: return mNota(negocio);
     case PASOS.CONFIRMAR: return s.carrito.length ? mResumen(s, negocio) : mMenu(s, negocio);
     default: return mMenu(s, negocio);
@@ -190,7 +276,11 @@ function reiniciarPedido(s) {
   s.carrito = [];
   s.pendiente = null;
   s.nombre = "";
+  s.telefono = "";
+  s.telIntentos = 0;
+  s.direccion = "";
   s.nota = "";
+  s.sugeridoYa = false;
 }
 
 function textoDueno(canal, pedidoId, p) {
@@ -198,7 +288,8 @@ function textoDueno(canal, pedidoId, p) {
   const lineas = p.lineas.map((l) => `- ${l.cant} × ${l.nombre} (${pesos(l.precio)} c/u)`).join("\n");
   return (
     `Pedido nuevo #${pedidoId} (${etiqueta})\n` +
-    `Cliente: ${p.nombre}\nContacto: ${p.contacto || "(sin contacto: escribirle por el mismo canal)"}\n` +
+    `Cliente: ${p.nombre}\nCelular: ${p.telefono || "(no lo dio)"}\nDirección: ${p.direccion || "(no la dio)"}\n` +
+    (p.contacto ? `Contacto: ${p.contacto}\n` : "Contacto: (escribirle por el mismo canal)\n") +
     `${lineas}\nTotal: ${pesos(p.total)}\nNota: ${p.nota || "(ninguna)"}`
   );
 }
@@ -243,6 +334,8 @@ export async function manejar(msg, ctx) {
   const s = existente ?? sesionNueva(ahora);
   if (!existente) await store.sumarMetrica(diaBogota(ahora), negocio.id, msg.canal, "inicio");
 
+  s.canal = msg.canal; // para saber qué preguntar (en WhatsApp ya tenemos el número; en Telegram no)
+  const pasoAntes = s.paso;
   s.ultimo = ahora; // cuándo escribió por última vez (WhatsApp solo deja contestarle libremente 24 horas después)
 
   // Tope de mensajes por hora (cada respuesta de WhatsApp puede costar plata al negocio).
@@ -270,6 +363,7 @@ export async function manejar(msg, ctx) {
   else if (ATAJOS_VER.has(bajo)) accion = "ver";
   else if (ATAJOS_VACIAR.has(bajo) && !(s.paso === PASOS.NOTA || s.paso === PASOS.NOMBRE)) accion = "vaciar";
   else if (bajo === "/cancelar") accion = "vaciar";
+  else if (s.paso === PASOS.TELEFONO && /^[1-3]$/.test(bajo) && s.opciones[Number(bajo) - 1]) accion = s.opciones[Number(bajo) - 1];
   else if (esTexto) dato = texto;
   else if (/^\d{1,2}$/.test(bajo) && s.opciones[Number(bajo) - 1]) accion = s.opciones[Number(bajo) - 1];
   else {
@@ -279,6 +373,16 @@ export async function manejar(msg, ctx) {
 
   const out = [];
   const decir = (m) => out.push(m);
+  const aDireccion = (prefijo = "") => {
+    s.paso = PASOS.DIRECCION;
+    const m = mDireccion(negocio);
+    decir({ ...m, texto: prefijo + m.texto, quitarTeclado: true }); // quitarTeclado: en Telegram esconde el botón de compartir número
+  };
+  const aNombre = (prefijo = "") => {
+    s.paso = PASOS.NOMBRE;
+    const m = mNombre();
+    decir({ ...m, texto: prefijo + m.texto });
+  };
 
   if (!s.consentimiento) {
     if (accion === "ok") {
@@ -308,6 +412,31 @@ export async function manejar(msg, ctx) {
       if (!nombre) decir(mNombre());
       else {
         s.nombre = nombre;
+        s.telIntentos = 0;
+        s.paso = PASOS.TELEFONO;
+        decir(mTelefono(s));
+      }
+    } else if (s.paso === PASOS.TELEFONO) {
+      // msg.telefono: el canal ya comprobó que es el número de la persona (botón de Telegram).
+      const tel = normalizarCelular(msg.telefono ?? dato, Boolean(msg.telefono));
+      if (tel) {
+        s.telefono = tel;
+        aDireccion();
+      } else if (SIN_CELULAR.has(bajo)) {
+        s.telefono = "";
+        aDireccion();
+      } else {
+        s.telIntentos += 1;
+        if (s.telIntentos >= 2) {
+          s.telefono = "";
+          aDireccion("No pude leer el número, sigo sin él.\n");
+        } else decir(mTelefono(s, true));
+      }
+    } else if (s.paso === PASOS.DIRECCION) {
+      const d = limpiar(dato, LIMITES.direccion);
+      if (d.length < 3) decir({ ...mDireccion(negocio), texto: "Necesito la dirección para llevártelo (o escribe «Recojo»).\n" + mDireccion(negocio).texto });
+      else {
+        s.direccion = d;
         s.paso = PASOS.NOTA;
         decir(mNota(negocio));
       }
@@ -348,10 +477,29 @@ export async function manejar(msg, ctx) {
     } else decir(pregunta(s, negocio));
   } else if (accion === "fin" && s.paso === PASOS.MENU) {
     if (!lineasValidas(s, negocio).length) decir({ ...mMenu(s, negocio), texto: "Tu pedido está vacío.\n\n" + mMenu(s, negocio).texto });
-    else {
-      s.paso = PASOS.NOMBRE;
-      decir(mNombre());
-    }
+    else if (sugerido(s, negocio)) {
+      const p = sugerido(s, negocio);
+      s.sugeridoYa = true; // se ofrece una sola vez por pedido
+      s.paso = PASOS.SUGERENCIA;
+      decir(mSugerencia(negocio, p));
+    } else aNombre();
+  } else if (accion === "sug:si" && s.paso === PASOS.SUGERENCIA) {
+    const p = negocio.sugerencia ? producto(negocio, negocio.sugerencia.producto) : null;
+    if (p) agregar(s, p.id, 1);
+    aNombre(p ? `Listo, agregué ${p.nombre}.\n` : "");
+  } else if (accion === "sug:no" && s.paso === PASOS.SUGERENCIA) {
+    aNombre();
+  } else if (accion === "tel:mismo" && s.paso === PASOS.TELEFONO && s.canal === "whatsapp") {
+    const tel = normalizarCelular(msg.usuario, true);
+    if (tel) {
+      s.telefono = tel;
+      aDireccion();
+    } else decir({ texto: "Escribe el número con 10 dígitos, por ejemplo 300 123 4567.", opciones: [{ id: "tel:no", titulo: "Prefiero no darlo" }] });
+  } else if (accion === "tel:otro" && s.paso === PASOS.TELEFONO && s.canal === "whatsapp") {
+    decir({ texto: "Escribe el número con 10 dígitos, por ejemplo 300 123 4567.", opciones: [{ id: "tel:no", titulo: "Prefiero no darlo" }] });
+  } else if (accion === "tel:no" && s.paso === PASOS.TELEFONO && s.canal === "whatsapp") {
+    s.telefono = "";
+    aDireccion();
   } else if (accion === "sinnota" && s.paso === PASOS.NOTA) {
     s.nota = "";
     s.paso = PASOS.CONFIRMAR;
@@ -362,13 +510,14 @@ export async function manejar(msg, ctx) {
       s.paso = PASOS.MENU;
       decir(mMenu(s, negocio));
     } else {
+      // La base guarda un solo campo de nota y uno de contacto: ahí van juntos la dirección y el celular.
       const pedido = {
         negocio: negocio.id,
         canal: msg.canal,
         usuario: msg.usuario,
-        contacto: msg.contacto ?? "",
+        contacto: [s.telefono, msg.contacto].filter(Boolean).join(" · "),
         nombre: s.nombre,
-        nota: s.nota,
+        nota: [s.direccion ? `Dirección: ${s.direccion}` : "", s.nota ? `Nota: ${s.nota}` : ""].filter(Boolean).join(" | "),
         lineas: filas,
         total,
         creado: new Date(ahora).toISOString(),
@@ -385,7 +534,7 @@ export async function manejar(msg, ctx) {
         }
       }
       try {
-        await ctx.notificarDueno(textoDueno(msg.canal, id, pedido) + avisoHoja);
+        await ctx.notificarDueno(textoDueno(msg.canal, id, { ...pedido, telefono: s.telefono, direccion: s.direccion, nota: s.nota, contacto: msg.contacto ?? "" }) + avisoHoja);
       } catch (e) {
         console.error("No se pudo avisar a la dueña:", e?.message ?? e);
       }
@@ -399,6 +548,11 @@ export async function manejar(msg, ctx) {
   } else {
     const p = pregunta(s, negocio);
     decir(aviso ? { ...p, texto: aviso + p.texto } : p);
+  }
+
+  // Si la persona salió del paso del celular sin usar el botón de Telegram, se esconde ese teclado.
+  if (pasoAntes === PASOS.TELEFONO && s.canal === "telegram" && s.paso !== PASOS.TELEFONO && out[0]?.opciones?.length && !out[0].quitarTeclado) {
+    out.unshift({ texto: "Listo.", quitarTeclado: true });
   }
 
   const ultimo = out[out.length - 1];

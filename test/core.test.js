@@ -40,12 +40,23 @@ for (const negocio of Object.values(NEGOCIOS)) {
     assert.match(tras.texto, new RegExp(pesos(p0.precio * 2).replace("$", "\\$")));
     const ver = await toca(ctx, "u1", "ver");
     assert.match(ver.texto, /Total/);
-    const nombre = await toca(ctx, "u1", "fin");
+    let nombre = await toca(ctx, "u1", "fin");
+    if (negocio.sugerencia && negocio.sugerencia.producto !== p0.id) {
+      // Los negocios con sugerencia ofrecen un producto extra, una sola vez, antes de pedir los datos
+      // (si ya pediste ese producto, no se ofrece).
+      assert.deepEqual(nombre.opciones.map((o) => o.id), ["sug:si", "sug:no"]);
+      nombre = await toca(ctx, "u1", "sug:no");
+    }
     assert.match(nombre.texto, /nombre/);
-    const nota = await dice(ctx, "u1", "Ana Prueba");
-    assert.match(nota.texto, /dirección/);
-    const resumen = await dice(ctx, "u1", "Calle falsa 123, tel 3000000000");
+    const celular = await dice(ctx, "u1", "Ana Prueba");
+    assert.match(celular.texto, /celular/);
+    const direccion = await dice(ctx, "u1", "300 123 4567");
+    assert.match(direccion.texto, /dirección/);
+    const nota = await dice(ctx, "u1", "Calle falsa 123");
+    assert.match(nota.texto, /Sin nota/);
+    const resumen = await toca(ctx, "u1", "sinnota");
     assert.match(resumen.texto, /Calle falsa 123/);
+    assert.match(resumen.texto, /Celular: 300 123 4567/);
     const fin = await toca(ctx, "u1", "enviar");
     assert.match(fin.texto, /#1 recibido/);
 
@@ -82,6 +93,8 @@ test("el precio sale del catálogo, no de la sesión (sesión manipulada)", asyn
   await ctx.store.putSesion("telegram:u", s, ctx.ahora());
   await toca(ctx, "u", "fin");
   await dice(ctx, "u", "Beto");
+  await dice(ctx, "u", "3001234567");
+  await dice(ctx, "u", "Calle Inventada 1");
   await toca(ctx, "u", "sinnota");
   await toca(ctx, "u", "enviar");
   assert.equal(ctx.store.pedidos[0].total, 35000);
@@ -96,6 +109,8 @@ test("botones viejos o inventados no hacen nada peligroso", async () => {
   await toca(ctx, "u", "c:1");
   await toca(ctx, "u", "fin");
   await dice(ctx, "u", "Beto");
+  await dice(ctx, "u", "3001234567");
+  await dice(ctx, "u", "Calle Inventada 1");
   await toca(ctx, "u", "sinnota");
   await toca(ctx, "u", "enviar");
   const n = ctx.store.pedidos.length;
@@ -116,7 +131,9 @@ test("BORRAR elimina la sesión y deja los pedidos sin datos personales", async 
   await toca(ctx, "u", "c:1");
   await toca(ctx, "u", "fin");
   await dice(ctx, "u", "Carla Inventada");
+  await dice(ctx, "u", "3001234567");
   await dice(ctx, "u", "Dirección inventada 1");
+  await toca(ctx, "u", "sinnota");
   await toca(ctx, "u", "enviar");
   const r = await dice(ctx, "u", "BORRAR");
   assert.match(r.texto, /borré/);
@@ -164,11 +181,14 @@ test("el nombre y la nota se limpian y se recortan", async () => {
   await toca(ctx, "u", "c:1");
   await toca(ctx, "u", "fin");
   await dice(ctx, "u", "<b>X</b>\n".repeat(50));
+  await dice(ctx, "u", "3001234567");
+  await dice(ctx, "u", "d".repeat(2000));
   await dice(ctx, "u", "n".repeat(2000));
   await toca(ctx, "u", "enviar");
   const p = ctx.store.pedidos[0];
   assert.ok(p.nombre.length <= LIMITES.nombre);
-  assert.ok(p.nota.length <= LIMITES.nota);
+  assert.ok(p.nota.length <= LIMITES.nota + LIMITES.direccion + 30); // la dirección y la nota van juntas en un solo campo
+  assert.ok(p.nota.includes("Dirección: " + "d".repeat(LIMITES.direccion)));
   assert.ok(!/\n/.test(p.nombre));
 });
 
@@ -195,7 +215,10 @@ test("resumen del día cuenta por canal y usa hora de Colombia", async () => {
       await toca(ctx, u, "p:rosa", canal);
       await toca(ctx, u, "c:3", canal);
       await toca(ctx, u, "fin", canal);
+      await toca(ctx, u, "sug:no", canal); // flores-fomi sugiere un girasol
       await dice(ctx, u, `Cliente ${u}`, canal);
+      await dice(ctx, u, "3001234567", canal);
+      await dice(ctx, u, "Calle Inventada 1", canal);
       await toca(ctx, u, "sinnota", canal);
       await toca(ctx, u, "enviar", canal);
     }
@@ -208,7 +231,7 @@ test("resumen del día cuenta por canal y usa hora de Colombia", async () => {
   const tarde = Date.UTC(2026, 10, 6, 4, 30);
   const ctx2 = crearCtx(NEGOCIOS["flores-fomi"], Date.UTC(2026, 10, 5, 22, 0));
   await dice(ctx2, "z", "hola"); await toca(ctx2, "z", "ok"); await toca(ctx2, "z", "p:rosa"); await toca(ctx2, "z", "c:1");
-  await toca(ctx2, "z", "fin"); await dice(ctx2, "z", "Z"); await toca(ctx2, "z", "sinnota");
+  await toca(ctx2, "z", "fin"); await toca(ctx2, "z", "sug:no"); await dice(ctx2, "z", "Z"); await dice(ctx2, "z", "3001234567"); await dice(ctx2, "z", "Calle Inventada 1"); await toca(ctx2, "z", "sinnota");
   ctx2.reloj.t = Date.UTC(2026, 10, 5, 23, 59);
   await toca(ctx2, "z", "enviar");
   ctx2.reloj.t = tarde;

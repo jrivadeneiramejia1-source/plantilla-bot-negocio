@@ -225,6 +225,8 @@ async function pedirUno(ctx, usuario = "u", canal = "telegram") {
   await toca(ctx, usuario, "c:1", canal);
   await toca(ctx, usuario, "fin", canal);
   await dice(ctx, usuario, "Carla Inventada", canal);
+  await dice(ctx, usuario, "3001234567", canal);
+  await dice(ctx, usuario, "Calle Inventada 1", canal);
   await toca(ctx, usuario, "sinnota", canal);
   return toca(ctx, usuario, "enviar", canal);
 }

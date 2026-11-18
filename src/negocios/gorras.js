@@ -5,6 +5,7 @@ export default {
   saludo: "¡Hola! Vendemos gorras para toda la familia.",
   entrega: "Enviamos a todo el país o puedes recoger en el punto de venta.",
   cierre: "Te escribiremos para confirmar tallas, colores y el envío.",
+  preguntaNota: "¿Qué color y talla quieres?",
   productos: [
     { id: "clasica", nombre: "Gorra clásica", precio: 35000, descripcion: "Visera curva, ajustable" },
     { id: "bordada", nombre: "Gorra bordada", precio: 45000, descripcion: "Con bordado a elección" },

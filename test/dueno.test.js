@@ -218,6 +218,8 @@ test("de punta a punta: pedido de un cliente con precios de la hoja, registro de
   await m.boton(555, "c:2");
   await m.boton(555, "fin");
   await m.tg(555, "Ana Inventada");
+  await m.tg(555, "3001234567");
+  await m.tg(555, "Calle Inventada 1");
   await m.boton(555, "sinnota");
   const fin = await m.boton(555, "enviar");
   assert.match(fin.find((x) => String(x.cuerpo.chat_id) === "555").cuerpo.text, /#1 recibido/);
