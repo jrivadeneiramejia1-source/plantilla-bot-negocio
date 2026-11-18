@@ -11,7 +11,7 @@ const AYUDA =
   "/resumen — pedidos de hoy y qué canal vende más\n" +
   "/pedidos — los pedidos de hoy con su número\n" +
   "/productos — qué productos y precios muestra el bot ahora\n" +
-  "/avisar 12 texto — le escribo al cliente del pedido 12\n" +
+  "/avisar 12 texto — le escribo al cliente del pedido 12 (el mensaje lleva su pedido)\n" +
   "/demora 12 30 — le aviso que su pedido 12 demora 30 minutos (también «1 hora»)\n" +
   "/listo 12 — le aviso que su pedido 12 está listo\n" +
   "/catalogo — reviso la hoja de productos (si está vacía, la lleno con ejemplos)\n" +
@@ -56,12 +56,22 @@ function parecido(palabra) {
   return mejor?.cmd ?? null;
 }
 
-async function avisarCliente(env, deps, negocio, id, texto) {
+// «2 × Rosa de foami, 1 × Girasol de foami — Total $16.000». Con más de 5 productos, los demás se cuentan.
+function detallePedido(p) {
+  const lineas = Array.isArray(p.lineas) ? p.lineas : [];
+  const vistas = lineas.slice(0, 5).map((l) => `${l.cant} × ${l.nombre}`);
+  if (lineas.length > 5) vistas.push(`y ${lineas.length - 5} más`);
+  return `${vistas.join(", ")} — Total ${pesos(p.total)}`;
+}
+
+/** `hacer(detalle)` arma el texto que se le manda al cliente; así cada aviso dice qué pidió y cuál es su número. */
+async function avisarCliente(env, deps, negocio, id, hacer) {
   const p = await deps.store.getPedido(id);
   if (!p || p.negocio !== negocio.id) return `No encuentro el pedido #${id}.`;
   if (p.usuario === "(borrado)") return "Esa persona pidió borrar sus datos: ya no se le puede escribir.";
   // El cliente lo lee como un mensaje directo del negocio: saludo con su primer nombre y el texto, sin etiquetas.
   const primerNombre = String(p.nombre ?? "").trim().split(/\s+/)[0].slice(0, 30);
+  const texto = hacer(detallePedido(p));
   const mensaje = `${primerNombre ? `Hola ${primerNombre},` : "Hola,"}\n${texto}`;
   try {
     if (p.canal === "telegram") {
@@ -174,7 +184,7 @@ export async function comandoDueno(texto, env, deps, { soloConBarra = false } = 
       const a = args.match(/^#?(\d{1,9})\s+([\s\S]+)$/);
       const msg = a ? limpiar(a[2], 500) : "";
       if (!a || !msg) return "Escríbelo así: /avisar 12 Tu pedido ya salió para tu casa";
-      return avisarCliente(env, deps, negocio, a[1], msg);
+      return avisarCliente(env, deps, negocio, a[1], (detalle) => `${msg}\nTu pedido #${a[1]}: ${detalle}`);
     }
     case "demora": {
       const a = args.match(/^#?(\d{1,9})\s+(\d{1,3})\s*([a-zA-Zá-ú]*)\.?$/);
@@ -184,12 +194,12 @@ export async function comandoDueno(texto, env, deps, { soloConBarra = false } = 
       }
       const horas = min >= 60 && min % 60 === 0 ? min / 60 : 0;
       const tiempo = horas ? `aproximadamente ${horas} hora${horas === 1 ? "" : "s"}` : `unos ${min} minutos`;
-      return avisarCliente(env, deps, negocio, a[1], `Tu pedido #${a[1]} va a demorar ${tiempo}. ¡Gracias por tu paciencia!`);
+      return avisarCliente(env, deps, negocio, a[1], (detalle) => `Tu pedido #${a[1]} (${detalle}) va a demorar ${tiempo}. ¡Gracias por tu paciencia!`);
     }
     case "listo": {
       const a = args.match(/^#?(\d{1,9})$/);
       if (!a) return "Escríbelo así: /listo 12";
-      return avisarCliente(env, deps, negocio, a[1], `Tu pedido #${a[1]} está listo. ¡Gracias por tu compra!`);
+      return avisarCliente(env, deps, negocio, a[1], (detalle) => `Tu pedido #${a[1]} (${detalle}) está listo. ¡Gracias por tu compra!`);
     }
     default: {
       // Una orden con «/» que no conocemos: se explica, en vez de tratarla como a un cliente.
