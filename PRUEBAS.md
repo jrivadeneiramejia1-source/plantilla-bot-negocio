@@ -50,9 +50,10 @@ Todo con datos **inventados** y sin cuentas reales. Claude no vio ni usó ningun
 | WhatsApp | «¿Este mismo número?» con 3 botones que caben; «Otro número» pide escribirlo; contestar «2» elige la opción en vez de contarse como celular; número extranjero aceptado solo desde su propio WhatsApp | Pasa |
 | Sugerencia antes de confirmar | se ofrece una vez por pedido; «Sí» agrega 1 con el precio del catálogo; no se ofrece si ya lo lleva o si ya no está en el catálogo de la hoja; texto suelto en ese paso repite la pregunta | Pasa |
 | Datos | la dirección y el celular quedan en la nota y el contacto del pedido (y en la hoja); BORRAR los deja en blanco; una sesión empezada antes del cambio no se rompe | Pasa |
+| Aviso de la dueña al cliente | `/avisar`, `/demora` y `/listo` llegan como mensaje directo («Hola Ana,» + texto, solo el primer nombre, sin el nombre del negocio); la dueña ve su confirmación aparte | Pasa |
 | Las pruebas detectan fallas | Se quitó, una por una: la comprobación de «el contacto es de la misma persona», la regla del 3, el «una sola vez» de la sugerencia, el esconder el teclado, el tope de intentos, «ya lo lleva» y la elección por número | En cada caso falló al menos una prueba (bien) |
 
-Total: 130 pruebas automáticas, todas pasan (26 de la base, 22 de la hoja y el almacén, 10 del ayudante de Telegram, 39 de catálogo, clientes y avisos, 10 del grupo y 23 del pedido más claro). Las 107 anteriores también pasaron en Windows 10/11 con Node 22 (2026-11-18, `npm test` en el computador del ensayo; la prueba del ayudante tuvo que corregirse para Windows).
+Total: 131 pruebas automáticas, todas pasan (26 de la base, 22 de la hoja y el almacén, 10 del ayudante de Telegram, 40 de catálogo, clientes y avisos, 10 del grupo y 23 del pedido más claro). Las 107 anteriores también pasaron en Windows 10/11 con Node 22 (2026-11-18, `npm test` en el computador del ensayo; la prueba del ayudante tuvo que corregirse para Windows).
 
 ## Errores encontrados al probar
 - (Catálogo y avisos) Una prueba cambiaba la configuración compartida (la palabra secreta) y contaminaba a las siguientes; era un error de la prueba, se corrigió haciendo copias. Otra contaba mal los avisos (10, no 9).

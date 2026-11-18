@@ -19,7 +19,7 @@ Corre gratis en Cloudflare Workers con una base D1. Los negocios de ejemplo son 
 npm install --ignore-scripts
 npm test
 ```
-Eso corre 130 pruebas con Telegram, WhatsApp y la hoja de Google simulados. (Las del almacén usan `node:sqlite`, que viene con Node 22.5 o más nuevo; saca un aviso de «experimental», es normal.)
+Eso corre 131 pruebas con Telegram, WhatsApp y la hoja de Google simulados. (Las del almacén usan `node:sqlite`, que viene con Node 22.5 o más nuevo; saca un aviso de «experimental», es normal.)
 
 ## Probar el Worker completo en tu computador
 ```bash
