@@ -67,7 +67,7 @@ export async function telegramWebhook(request, env, deps) {
     if (grupo) {
       // En un grupo el bot solo obedece a las socias, y solo en el grupo de alertas configurado (ALERTAS_CHAT_ID).
       if (cb || !esDueno || String(chat.id) !== String(env.ALERTAS_CHAT_ID ?? "").trim()) return new Response("ok");
-      const respuesta = await comandoDueno(texto, env, deps);
+      const respuesta = await comandoDueno(texto, env, deps, { soloConBarra: true });
       if (respuesta !== null) await enviarTelegram(env, deps.fetch, chat.id, respuesta);
       return new Response("ok");
     }
