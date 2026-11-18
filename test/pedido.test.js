@@ -42,7 +42,7 @@ test("Telegram: el celular se pide aparte, la persona lo escribe (sin botón de 
   const ctx = crearCtx(GORRAS);
   const pide = await hastaCelular(ctx);
   assert.match(pide.texto, /celular/);
-  assert.match(pide.texto, /10 dígitos/);
+  assert.equal(pide.texto, "¿A qué celular te escribimos si hay algo del pedido?\nEscríbelo:"); // corta: el ejemplo de 10 dígitos solo sale si se equivoca
   assert.doesNotMatch(pide.texto, /Compartir/);
   assert.deepEqual(pide.opciones.map((o) => o.id), ["tel:no"]); // solo «Prefiero no darlo»
 
@@ -66,7 +66,7 @@ test("Telegram: un número mal escrito se pide una vez más; si falla otra vez, 
   const ctx = crearCtx(GORRAS);
   await hastaCelular(ctx);
   const otra = await dice(ctx, "u", "mi numero es ese");
-  assert.match(otra.texto, /No pude leer ese número/);
+  assert.match(otra.texto, /No pude leer ese número. Escríbelo con 10 dígitos, por ejemplo 300 123 4567/);
   assert.deepEqual(otra.opciones.map((o) => o.id), ["tel:no"]);
   const sigue = await dice(ctx, "u", "123");
   assert.match(sigue.texto, /sigo sin él/);
@@ -141,7 +141,7 @@ async function aCelular(m, de) {
 test("Telegram real (simulado): el celular se pide por escrito, sin botón de compartir contacto", async () => {
   const m = mundoTelegram();
   const [pide] = await aCelular(m, 55);
-  assert.match(pide.cuerpo.text, /Escríbelo con 10 dígitos/);
+  assert.equal(pide.cuerpo.text, "¿A qué celular te escribimos si hay algo del pedido?\nEscríbelo:");
   assert.deepEqual(pide.cuerpo.reply_markup.inline_keyboard, [[{ text: "Prefiero no darlo", callback_data: "tel:no" }]]);
   assert.ok(!JSON.stringify(pide.cuerpo).includes("request_contact"));
   const [dir] = await m.texto(55, "311 616 9213");

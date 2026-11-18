@@ -182,7 +182,7 @@ function mTelefono(s, repetir = false) {
     };
   }
   return {
-    texto: `${intro}¿A qué celular te escribimos si hay algo del pedido? Escríbelo con 10 dígitos, por ejemplo 300 123 4567.`,
+    texto: `${intro}¿A qué celular te escribimos si hay algo del pedido?\nEscríbelo:`,
     opciones: [{ id: "tel:no", titulo: "Prefiero no darlo" }],
   };
 }
