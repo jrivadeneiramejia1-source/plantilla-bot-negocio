@@ -7,7 +7,7 @@ Corre gratis en Cloudflare Workers con una base D1. Los negocios de ejemplo son 
 ## Qué hace
 - Aviso de privacidad al primer mensaje (Ley 1581): el cliente debe aceptar. Escribir **BORRAR** elimina sus datos.
 - Menú con botones (también acepta escribir el número de la opción).
-- Pedido con una pregunta por mensaje: cantidades, nombre, celular, dirección y nota, y un resumen. En Telegram el celular se pide con el botón «Compartir mi número»; en WhatsApp se confirma el mismo número. Se revisa que sea un celular de Colombia (10 dígitos que empiezan por 3) y se puede no darlo. Cada negocio puede tener su propia pregunta de nota y **un producto sugerido** antes de confirmar (`preguntaNota` y `sugerencia` en `src/negocios/`). Los precios se toman siempre del catálogo, no de lo que mande el cliente.
+- Pedido con una pregunta por mensaje: cantidades, nombre, celular, dirección y nota, y un resumen. En Telegram la persona escribe su celular; en WhatsApp se confirma el mismo número. Se revisa que sea un celular de Colombia (10 dígitos que empiezan por 3) y se puede no darlo. Cada negocio puede tener su propia pregunta de nota y **un producto sugerido** antes de confirmar (`preguntaNota` y `sugerencia` en `src/negocios/`). Los precios se toman siempre del catálogo, no de lo que mande el cliente.
 - **Hoja de Google del cliente** (sin archivo de claves; ver más abajo): pedidos, lista de clientes y productos que la dueña edita desde el celular. BORRAR también borra los datos en la hoja.
 - La dueña le escribe a un cliente desde Telegram (`/demora 12 30`, `/listo 12`, `/avisar 12 texto`).
 - Aviso a las socias por Telegram (a un grupo de las tres, o a cada una). Ella escribe `/resumen` y ve los pedidos de hoy y **cuál canal funciona mejor** (conversaciones y pedidos de Telegram contra WhatsApp).
@@ -19,7 +19,7 @@ Corre gratis en Cloudflare Workers con una base D1. Los negocios de ejemplo son 
 npm install --ignore-scripts
 npm test
 ```
-Eso corre 131 pruebas con Telegram, WhatsApp y la hoja de Google simulados. (Las del almacén usan `node:sqlite`, que viene con Node 22.5 o más nuevo; saca un aviso de «experimental», es normal.)
+Eso corre 128 pruebas con Telegram, WhatsApp y la hoja de Google simulados. (Las del almacén usan `node:sqlite`, que viene con Node 22.5 o más nuevo; saca un aviso de «experimental», es normal.)
 
 ## Probar el Worker completo en tu computador
 ```bash

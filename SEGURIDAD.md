@@ -33,7 +33,7 @@
 - La pestaña «Clientes» guarda nombre y contacto de los compradores (datos personales): vive en la cuenta del negocio, y BORRAR la deja sin esa fila.
 
 ## Datos personales de los compradores (Ley 1581 de 2012, habeas data)
-- Qué se guarda: nombre, celular (opcional), dirección, nota, contacto (enlace de WhatsApp o usuario de Telegram) y el pedido. Solo para entregarlo. El celular de Telegram solo se acepta si la persona lo comparte con el botón del bot o lo escribe: un contacto de otra persona (reenviado) se rechaza.
+- Qué se guarda: nombre, celular (opcional), dirección, nota, contacto (enlace de WhatsApp o usuario de Telegram) y el pedido. Solo para entregarlo.
 - Se pide aceptación antes de guardar nada. **BORRAR** elimina la sesión y deja los pedidos sin nombre, nota ni contacto (se conserva el valor para la contabilidad).
 - Las sesiones se borran solas pasados 7 días sin uso.
 - Los datos pasan por Cloudflare, Telegram, Meta y (si se activa la hoja) Google (servidores fuera de Colombia). El aviso al cliente final debe decirlo.
