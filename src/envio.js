@@ -1,10 +1,21 @@
 // Envío de mensajes a Telegram y WhatsApp (compartido por los canales y por los comandos de la dueña).
 const API_TELEGRAM = "https://api.telegram.org";
 
-export async function enviarTelegram(env, fetchFn, chatId, texto, opciones) {
+// extra (opcional): { pedirNumero } muestra el botón «Compartir mi número» (Telegram solo lo permite en chats privados);
+// { quitarTeclado } lo esconde. Con botones en el mensaje (opciones) no se usan: Telegram admite un solo tipo de teclado por mensaje.
+export async function enviarTelegram(env, fetchFn, chatId, texto, opciones, extra = {}) {
   const cuerpo = { chat_id: chatId, text: String(texto).slice(0, 4000) };
   if (opciones?.length) {
     cuerpo.reply_markup = { inline_keyboard: opciones.map((o) => [{ text: o.titulo.slice(0, 60), callback_data: o.id }]) };
+  } else if (extra?.pedirNumero) {
+    cuerpo.reply_markup = {
+      keyboard: [[{ text: "📱 Compartir mi número", request_contact: true }], [{ text: "Prefiero no darlo" }]],
+      resize_keyboard: true,
+      one_time_keyboard: true,
+      input_field_placeholder: "o escribe tu celular",
+    };
+  } else if (extra?.quitarTeclado) {
+    cuerpo.reply_markup = { remove_keyboard: true };
   }
   const r = await fetchFn(`${API_TELEGRAM}/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
     method: "POST",

@@ -20,7 +20,9 @@ async function avisarCliente(env, deps, negocio, id, texto) {
   const p = await deps.store.getPedido(id);
   if (!p || p.negocio !== negocio.id) return `No encuentro el pedido #${id}.`;
   if (p.usuario === "(borrado)") return "Esa persona pidió borrar sus datos: ya no se le puede escribir.";
-  const mensaje = `${negocio.nombre}: ${texto}`;
+  // El cliente lo lee como un mensaje directo del negocio: saludo con su primer nombre y el texto, sin etiquetas.
+  const primerNombre = String(p.nombre ?? "").trim().split(/\s+/)[0].slice(0, 30);
+  const mensaje = `${primerNombre ? `Hola ${primerNombre},` : "Hola,"}\n${texto}`;
   try {
     if (p.canal === "telegram") {
       await enviarTelegram(env, deps.fetch, p.usuario, mensaje);

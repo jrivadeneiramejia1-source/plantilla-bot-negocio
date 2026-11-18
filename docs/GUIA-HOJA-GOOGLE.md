@@ -98,7 +98,7 @@ La hoja debe estar en la **cuenta de Google del negocio** (en el ensayo, en la t
 4. Si alguien borra todo sin querer, el bot sigue con el último menú bueno.
 
 ### Pedidos y clientes
-- **Pedidos:** una fila por pedido (nombre, contacto, productos, total, nota). La columna «Estado» queda en «nuevo»; pueden escribirle «entregado» para su control.
+- **Pedidos:** una fila por pedido (nombre, contacto con el celular, productos, total, y la nota con la dirección). La columna «Estado» queda en «nuevo»; pueden escribirle «entregado» para su control.
 - **Clientes:** una fila por cliente con su nombre, contacto (usuario de Telegram), cuántos pedidos y cuánto ha comprado. **No editen estas dos pestañas** (las llena el bot).
 
 ### Escribirle al cliente (desde el grupo de las socias)

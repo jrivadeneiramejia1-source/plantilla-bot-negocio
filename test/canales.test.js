@@ -51,6 +51,8 @@ test("Telegram: conversación con botones, duplicados y aviso a la dueña", asyn
   await enviar(tgBtn(id++, "c:2"));
   await enviar(tgBtn(id++, "fin"));
   await enviar(tgMsg(id++, "Ana Inventada"));
+  await enviar(tgMsg(id++, "300 123 4567"));
+  await enviar(tgMsg(id++, "Calle Inventada 1"));
   await enviar(tgBtn(id++, "sinnota"));
   const idEnviar = id++;
   await enviar(tgBtn(idEnviar, "enviar"));
@@ -151,11 +153,13 @@ test("WhatsApp: pedido completo y no duplicar", async () => {
     await enviar(await waReq(waOpcion("w" + n++, "c:1")));
     await enviar(await waReq(waOpcion("w" + n++, "fin")));
     await enviar(await waReq(waTexto("w" + n++, "Beto Inventado")));
+    await enviar(await waReq(waOpcion("w" + n++, "tel:mismo")));
+    await enviar(await waReq(waTexto("w" + n++, "Calle Inventada 2")));
     await enviar(await waReq(waOpcion("w" + n++, "sinnota")));
     await enviar(await waReq(waOpcion("wfinal", "enviar")));
   })();
   assert.equal(d.store.pedidos.length, 1);
-  assert.equal(d.store.pedidos[0].contacto, "https://wa.me/573001112233");
+  assert.equal(d.store.pedidos[0].contacto, "300 111 2233 · https://wa.me/573001112233"); // celular (el mismo de WhatsApp) + enlace
   const alDueno = d.fetch.llamadas.filter((l) => l.cuerpo?.chat_id === "999");
   assert.equal(alDueno.length, 1);
   assert.match(alDueno[0].cuerpo.text, /WhatsApp/);

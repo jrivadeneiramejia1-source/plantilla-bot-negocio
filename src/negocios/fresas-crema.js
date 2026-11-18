@@ -5,6 +5,8 @@ export default {
   saludo: "¡Hola! Preparamos fresas con crema frescas cada día.",
   entrega: "Entregamos en el barrio y alrededores, o puedes recogerlas.",
   cierre: "Te escribiremos para confirmar la hora de entrega.",
+  preguntaNota: "¿A qué hora lo quieres?",
+  sugerencia: { producto: "vaso-p", texto: "¿Le agregas un vaso pequeño?" },
   productos: [
     { id: "vaso-p", nombre: "Vaso pequeño", precio: 8000, descripcion: "Fresas con crema, 8 oz" },
     { id: "vaso-m", nombre: "Vaso mediano", precio: 12000, descripcion: "Fresas con crema, 12 oz" },

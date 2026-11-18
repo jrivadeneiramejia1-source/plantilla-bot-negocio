@@ -69,7 +69,7 @@ test("/avisar: le escribe al cliente de Telegram del pedido y le confirma a la d
   const id = await m.pedido();
   const r = await m.tg(DUENA, `/avisar ${id} Tu pedido ya salió para tu casa`);
   const alCliente = r.find((x) => String(x.cuerpo.chat_id) === "555");
-  assert.equal(alCliente.cuerpo.text, `${BASE.nombre}: Tu pedido ya salió para tu casa`);
+  assert.equal(alCliente.cuerpo.text, "Hola Ana,\nTu pedido ya salió para tu casa"); // mensaje directo: sin el nombre del negocio como etiqueta
   assert.match(m.aLaDuena(r)[0].cuerpo.text, /Enviado a Ana \(pedido #1\)/);
 });
 
@@ -80,6 +80,19 @@ test("/demora y /listo mandan textos listos", async () => {
   assert.match(d.find((x) => String(x.cuerpo.chat_id) === "555").cuerpo.text, /Tu pedido #1 va a demorar unos 30 minutos/);
   const l = await m.tg(DUENA, `/listo ${id}`);
   assert.match(l.find((x) => String(x.cuerpo.chat_id) === "555").cuerpo.text, /Tu pedido #1 está listo/);
+});
+
+test("el aviso al cliente es un mensaje directo: saludo con su primer nombre, sin el nombre del negocio como etiqueta", async () => {
+  const m = mundo();
+  const id = await m.pedido({ nombre: "Ana María Inventada" });
+  const d = await m.tg(DUENA, `/demora ${id} 30`);
+  const texto = d.find((x) => String(x.cuerpo.chat_id) === "555").cuerpo.text;
+  assert.equal(texto, `Hola Ana,\nTu pedido #${id} va a demorar unos 30 minutos. ¡Gracias por tu paciencia!`);
+  assert.ok(!texto.includes(BASE.nombre));
+  const l = await m.tg(DUENA, `/listo ${id}`);
+  assert.equal(l.find((x) => String(x.cuerpo.chat_id) === "555").cuerpo.text, `Hola Ana,\nTu pedido #${id} está listo. ¡Gracias por tu compra!`);
+  // La dueña sí ve la confirmación en tono de aviso interno.
+  assert.match(m.aLaDuena(l)[0].cuerpo.text, /Enviado a Ana María Inventada/);
 });
 
 test("uso mal escrito: explica cómo y no manda nada al cliente", async () => {
@@ -112,8 +125,9 @@ test("el mensaje se limpia y se recorta; Telegram caído o bot bloqueado se le e
   const id = await m.pedido();
   const r = await m.tg(DUENA, `/avisar ${id} hola\n\n\u0000${"x".repeat(900)}`);
   const texto = r.find((x) => String(x.cuerpo.chat_id) === "555").cuerpo.text;
-  assert.ok(!/[\u0000-\u001f]/.test(texto));
-  assert.ok(texto.length <= BASE.nombre.length + 2 + 500);
+  assert.equal(texto.split("\n").length, 2); // solo el salto después del saludo; los del texto de la dueña se quitan
+  assert.ok(!/[\u0000-\u001f]/.test(texto.split("\n")[1]));
+  assert.ok(texto.length <= "Hola Ana,\n".length + 500);
   m.fallan.add("555");
   const f = await m.tg(DUENA, `/avisar ${id} hola`);
   assert.match(m.aLaDuena(f).at(-1).cuerpo.text, /No se pudo enviar el mensaje a Ana/);
@@ -135,7 +149,7 @@ test("WhatsApp: se puede escribir dentro de las 24 horas; pasado ese tiempo se l
   const ok = await m.tg(DUENA, `/avisar ${dentro} Estamos preparando tu pedido`);
   const wa = ok.find((x) => /graph\.facebook\.com/.test(x.url));
   assert.equal(wa.cuerpo.to, "573001112233");
-  assert.equal(wa.cuerpo.text.body, `${BASE.nombre}: Estamos preparando tu pedido`);
+  assert.equal(wa.cuerpo.text.body, "Hola Beto,\nEstamos preparando tu pedido");
   assert.match(m.aLaDuena(ok)[0].cuerpo.text, /Enviado a Beto/);
 
   const fuera = await m.pedido({ canal: "whatsapp", usuario: "573009998877", contacto: "https://wa.me/573009998877", nombre: "Dora" });
@@ -218,6 +232,8 @@ test("de punta a punta: pedido de un cliente con precios de la hoja, registro de
   await m.boton(555, "c:2");
   await m.boton(555, "fin");
   await m.tg(555, "Ana Inventada");
+  await m.tg(555, "3001234567");
+  await m.tg(555, "Calle Inventada 1");
   await m.boton(555, "sinnota");
   const fin = await m.boton(555, "enviar");
   assert.match(fin.find((x) => String(x.cuerpo.chat_id) === "555").cuerpo.text, /#1 recibido/);

@@ -5,6 +5,8 @@ export default {
   saludo: "¡Hola! Aquí hacemos flores y detalles de foami hechos a mano.",
   entrega: "Entregamos en la ciudad o puedes recoger tu pedido.",
   cierre: "Te escribiremos para confirmar el pago y la entrega.",
+  preguntaNota: "¿Para quién es y para qué fecha lo necesitas?",
+  sugerencia: { producto: "girasol", texto: "¿Le agregas un girasol de foami?" },
   productos: [
     { id: "rosa", nombre: "Rosa de foami", precio: 4000, descripcion: "Una rosa con tallo, colores a elección" },
     { id: "ramo6", nombre: "Ramo de 6 rosas", precio: 22000, descripcion: "Seis rosas con envoltura" },
