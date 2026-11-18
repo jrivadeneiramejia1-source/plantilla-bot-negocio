@@ -55,6 +55,11 @@ export function crearHoja(env, fetchFn, store) {
         productos: resumenProductos(p.lineas),
         total: p.total,
         nota: p.nota,
+        // Separados (solo los trae un pedido recién hecho; en /reintentar la hoja los separa de «contacto» y «nota»).
+        telefono: p.telefono,
+        direccion: p.direccion,
+        notaLibre: p.notaLibre,
+        contactoCanal: p.contactoCanal,
       },
     });
     await store.marcarCopiado(id);

@@ -81,7 +81,7 @@ La hoja debe estar en la **cuenta de Google del negocio** (en el ensayo, en la t
 5. En `cmd`: `npx wrangler secret put SHEETS_URL` (pega la dirección) y `npx wrangler secret put SHEETS_TOKEN` (la misma palabra del paso 3). Luego `npx wrangler deploy`.
 6. En el grupo de las socias escribe **`/catalogo`**. Como la pestaña «Productos» está vacía, el bot la llena con los productos de ejemplo. Abre la hoja: ya existe la pestaña **Productos**.
 7. **Compartir la hoja:** botón **Compartir** (Share), con el correo de cada socia, como «Editor». Solo gente de confianza: quien edita ve los teléfonos de los compradores y puede cambiar precios.
-8. Si luego cambias el código del Apps Script: **Implementar → Administrar implementaciones → lápiz → Versión: Nueva versión → Implementar** (la dirección no cambia).
+8. Si luego cambias el código del Apps Script (por ejemplo, cuando el bot tenga columnas nuevas): borra todo lo que hay en `Código.gs`, pega el contenido nuevo de `apps-script/Codigo.gs`, guarda, y **Implementar → Administrar implementaciones → lápiz → Versión: Nueva versión → Implementar** (la dirección no cambia). Si las pestañas «Pedidos» y «Clientes» tienen el formato anterior, **se convierten solas** la próxima vez que llegue un pedido, sin perder filas (no cambien los encabezados ni agreguen columnas a esas dos pestañas: si lo hacen, no se tocan). Antes de actualizar, conviene **Archivo → Crear una copia** de la hoja.
 
 ## Parte 4. Cómo se usa (para las socias, desde el celular)
 
@@ -98,8 +98,8 @@ La hoja debe estar en la **cuenta de Google del negocio** (en el ensayo, en la t
 4. Si alguien borra todo sin querer, el bot sigue con el último menú bueno.
 
 ### Pedidos y clientes
-- **Pedidos:** una fila por pedido (nombre, contacto con el celular, productos, total, y la nota con la dirección). La columna «Estado» queda en «nuevo»; pueden escribirle «entregado» para su control.
-- **Clientes:** una fila por cliente con su nombre, contacto (usuario de Telegram), cuántos pedidos y cuánto ha comprado. **No editen estas dos pestañas** (las llena el bot).
+- **Pedidos:** una fila por pedido: fecha (hora de Colombia), canal, nombre, **celular**, contacto, productos, total (en pesos), **dirección**, **nota** y estado. La columna «Estado» queda en «nuevo»; pueden escribirle «entregado» para su control.
+- **Clientes:** una fila por cliente con su nombre, celular, contacto (usuario de Telegram o enlace de WhatsApp), cuántos pedidos y cuánto ha comprado. **No editen estas dos pestañas** (las llena el bot).
 
 ### Escribirle al cliente (desde el grupo de las socias)
 Cada aviso de pedido trae su número (`#12`). En el grupo escriban:

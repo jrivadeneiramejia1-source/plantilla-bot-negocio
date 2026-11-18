@@ -518,6 +518,11 @@ export async function manejar(msg, ctx) {
         lineas: filas,
         total,
         creado: new Date(ahora).toISOString(),
+        // Separados, para la hoja de Google (la base de datos guarda solo los campos de arriba, ya combinados).
+        telefono: s.telefono,
+        direccion: s.direccion,
+        notaLibre: s.nota,
+        contactoCanal: msg.contacto ?? "",
       };
       const id = await store.guardarPedido(pedido);
       await store.sumarMetrica(diaBogota(ahora), negocio.id, msg.canal, "pedido");

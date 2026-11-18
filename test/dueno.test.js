@@ -241,9 +241,9 @@ test("de punta a punta: pedido de un cliente con precios de la hoja, registro de
   assert.match(fin.find((x) => String(x.cuerpo.chat_id) === "555").cuerpo.text, /#1 recibido/);
   assert.equal((await m.store.getPedido(1)).total, 76000); // 2 × 38.000, el precio de la hoja
   assert.match(m.aLaDuena(fin)[0].cuerpo.text, /Pedido nuevo #1/);
-  assert.equal(m.script.filas("Pedidos")[1][6], 76000);
+  assert.equal(m.script.filas("Pedidos")[1][7], 76000);
   const clientes = m.script.filas("Clientes");
-  assert.deepEqual([clientes[1][0], clientes[1][1], clientes[1][4], clientes[1][5]], ["telegram:555", "Ana Inventada", 1, 76000]);
+  assert.deepEqual([clientes[1][0], clientes[1][1], clientes[1][2], clientes[1][5], clientes[1][6]], ["telegram:555", "Ana Inventada", "300 123 4567", 1, 76000]);
   // La dueña le avisa que demora.
   const d = await m.tg(DUENA, "/demora 1 20");
   assert.match(d.find((x) => String(x.cuerpo.chat_id) === "555").cuerpo.text, /va a demorar unos 20 minutos/);
