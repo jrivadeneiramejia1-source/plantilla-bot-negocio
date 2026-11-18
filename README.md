@@ -19,7 +19,7 @@ Corre gratis en Cloudflare Workers con una base D1. Los negocios de ejemplo son 
 npm install --ignore-scripts
 npm test
 ```
-Eso corre 128 pruebas con Telegram, WhatsApp y la hoja de Google simulados. (Las del almacén usan `node:sqlite`, que viene con Node 22.5 o más nuevo; saca un aviso de «experimental», es normal.)
+Eso corre 137 pruebas con Telegram, WhatsApp y la hoja de Google simulados. (Las del almacén usan `node:sqlite`, que viene con Node 22.5 o más nuevo; saca un aviso de «experimental», es normal.)
 
 ## Probar el Worker completo en tu computador
 ```bash
@@ -53,7 +53,8 @@ Guía paso a paso (y la parte para la dueña): [`docs/GUIA-HOJA-GOOGLE.md`](docs
 - **Estos pasos están escritos de memoria y no se verificaron en la pantalla de Google hoy**: los nombres de los menús pueden variar.
 
 ## Comandos de las socias (por Telegram: en privado o en el grupo de alertas)
-`/resumen` pedidos de hoy y qué canal vende más · `/demora 12 30` y `/listo 12` avisan al cliente · `/avisar 12 texto` le escribe lo que quieras · `/catalogo` revisa la hoja de productos · `/reintentar` copia a la hoja lo pendiente · `/ayuda` la lista · `/id` dice tu número de Telegram y el del chat (sirve para cualquiera).
+`/resumen` pedidos de hoy y qué canal vende más · `/pedidos` los de hoy con su número · `/productos` qué muestra el bot ahora · `/demora 12 30` (o `12 1 hora`) y `/listo 12` avisan al cliente · `/avisar 12 texto` le escribe lo que quieras · `/catalogo` revisa la hoja de productos · `/reintentar` copia a la hoja lo pendiente · `/ayuda` la lista · `/id` dice tu número de Telegram y el del chat (sirve para cualquiera).
+El bot entiende a las socias con o sin tildes y mayúsculas, con sinónimos (`/cuales`, `/precios`, `/hoy`, `/terminado`…), con `#12` y, en chat privado, con palabras sueltas como «ayuda» o «pedidos». Una orden con `/` que no conoce no se trata como un cliente: responde con la ayuda y, si hay una parecida, sugiere «¿Quisiste decir…?» (solo sugiere; nunca ejecuta sola una orden que le escribe a clientes).
 Varias socias: `OWNER_TELEGRAM_ID = "111,222,333"`. Grupo de Telegram de las socias: `ALERTAS_CHAT_ID = "-100..."` (el bot manda ahí cada aviso de pedido y solo obedece a las socias en ese grupo; si el grupo falla, avisa a cada una por privado). Guía completa: [`docs/GUIA-HOJA-GOOGLE.md`](docs/GUIA-HOJA-GOOGLE.md).
 **WhatsApp:** solo se le puede escribir a un cliente dentro de las 24 horas siguientes a su último mensaje; pasado ese tiempo el bot te da el enlace para que le escribas tú.
 

@@ -52,7 +52,14 @@ Todo con datos **inventados** y sin cuentas reales. Claude no vio ni usó ningun
 | Aviso de la dueña al cliente | `/avisar`, `/demora` y `/listo` llegan como mensaje directo («Hola Ana,» + texto, solo el primer nombre, sin el nombre del negocio); la dueña ve su confirmación aparte | Pasa |
 | Las pruebas detectan fallas | Se quitó, una por una: la comprobación de «el contacto es de la misma persona», la regla del 3, el «una sola vez» de la sugerencia, el esconder el teclado, el tope de intentos, «ya lo lleva» y la elección por número | En cada caso falló al menos una prueba (bien) |
 
-Total: 128 pruebas automáticas, todas pasan (26 de la base, 22 de la hoja y el almacén, 10 del ayudante de Telegram, 40 de catálogo, clientes y avisos, 10 del grupo y 20 del pedido más claro). Las 107 anteriores también pasaron en Windows 10/11 con Node 22 (2026-11-18, `npm test` en el computador del ensayo; la prueba del ayudante tuvo que corregirse para Windows).
+| **— Las socias le hablan al bot como hablan —** | | |
+| Órdenes flexibles | `/Resumen`, `/HOY`, `/ventas`, `/cuales`, `/precios`, `/catálogo`, `/help`, `/comandos`, `/demorar`, `/terminado`, `/avisa`, `/mensaje`; palabras sueltas en privado («ayuda», «¿Productos?», «Catálogo»); «#12» y «1 hora», «2 horas», «45 min» | Pasa |
+| Órdenes nuevas | `/productos` muestra el menú vigente (el de la hoja); `/pedidos` lista los de hoy con número, canal y hora de Colombia (los últimos 15 si hay más) | Pasa |
+| Órdenes desconocidas | una socia que escribe `/xyz` recibe ayuda en vez del menú de clientes; una parecida («/resumne», «/avisr») solo se sugiere y nunca se ejecuta; `/start`, `/menu` siguen siendo del motor de clientes | Pasa |
+| Quién | un cliente que escribe «ayuda», «/resumen», «/pedidos» o «/productos» no recibe nada de las socias; en el grupo solo con «/», solo las socias, y la conversación normal se ignora | Pasa |
+| Las pruebas detectan fallas | Se quitó, una por una: el respeto a las órdenes de cliente, el quitar tildes, las palabras sueltas solo en privado y el tope de 10 horas | En cada caso falló al menos una prueba (bien) |
+
+Total: 137 pruebas automáticas, todas pasan (26 de la base, 22 de la hoja y el almacén, 10 del ayudante de Telegram, 40 de catálogo, clientes y avisos, 10 del grupo, 20 del pedido más claro y 9 de las órdenes de las socias). Las 107 anteriores también pasaron en Windows 10/11 con Node 22 (2026-11-18, `npm test` en el computador del ensayo; la prueba del ayudante tuvo que corregirse para Windows).
 
 ## Errores encontrados al probar
 - (Catálogo y avisos) Una prueba cambiaba la configuración compartida (la palabra secreta) y contaminaba a las siguientes; era un error de la prueba, se corrigió haciendo copias. Otra contaba mal los avisos (10, no 9).
