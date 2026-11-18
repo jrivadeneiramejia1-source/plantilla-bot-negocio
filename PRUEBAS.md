@@ -57,9 +57,10 @@ Todo con datos **inventados** y sin cuentas reales. Claude no vio ni usó ningun
 | Órdenes nuevas | `/productos` muestra el menú vigente (el de la hoja); `/pedidos` lista los de hoy con número, canal y hora de Colombia (los últimos 15 si hay más) | Pasa |
 | Órdenes desconocidas | una socia que escribe `/xyz` recibe ayuda en vez del menú de clientes; una parecida («/resumne», «/avisr») solo se sugiere y nunca se ejecuta; `/start`, `/menu` siguen siendo del motor de clientes | Pasa |
 | Quién | un cliente que escribe «ayuda», «/resumen», «/pedidos» o «/productos» no recibe nada de las socias; en el grupo solo con «/», solo las socias, y la conversación normal se ignora | Pasa |
+| Aviso con el pedido | `/demora`, `/listo` y `/avisar` le dicen al cliente el número de su pedido, qué pidió y el total («2 × Gorra clásica, 1 × Gorra para niño — Total $100.000»); con más de 5 productos, los demás se cuentan («y 2 más») | Pasa; sin el detalle fallaron 6 pruebas (bien) |
 | Las pruebas detectan fallas | Se quitó, una por una: el respeto a las órdenes de cliente, el quitar tildes, las palabras sueltas solo en privado y el tope de 10 horas | En cada caso falló al menos una prueba (bien) |
 
-Total: 137 pruebas automáticas, todas pasan (26 de la base, 22 de la hoja y el almacén, 10 del ayudante de Telegram, 40 de catálogo, clientes y avisos, 10 del grupo, 20 del pedido más claro y 9 de las órdenes de las socias). Las 107 anteriores también pasaron en Windows 10/11 con Node 22 (2026-11-18, `npm test` en el computador del ensayo; la prueba del ayudante tuvo que corregirse para Windows).
+Total: 138 pruebas automáticas, todas pasan (26 de la base, 22 de la hoja y el almacén, 10 del ayudante de Telegram, 40 de catálogo, clientes y avisos, 10 del grupo, 20 del pedido más claro y 10 de las órdenes de las socias). Las 107 anteriores también pasaron en Windows 10/11 con Node 22 (2026-11-18, `npm test` en el computador del ensayo; la prueba del ayudante tuvo que corregirse para Windows).
 
 ## Errores encontrados al probar
 - (Catálogo y avisos) Una prueba cambiaba la configuración compartida (la palabra secreta) y contaminaba a las siguientes; era un error de la prueba, se corrigió haciendo copias. Otra contaba mal los avisos (10, no 9).

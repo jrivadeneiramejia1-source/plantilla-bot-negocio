@@ -122,16 +122,33 @@ test("/demora, /listo y /avisar aceptan «#12», minutos escritos y horas", asyn
   const m = mundo();
   const id = await m.pedido();
   const alCliente = async (orden) => m.textoA(await m.priv(SOCIA, orden), CLIENTE);
-  assert.deepEqual(await alCliente(`/demora ${id} 30`), ["Hola Ana,\nTu pedido #1 va a demorar unos 30 minutos. ¡Gracias por tu paciencia!"]);
+  assert.deepEqual(await alCliente(`/demora ${id} 30`), ["Hola Ana,\nTu pedido #1 (1 × Gorra clásica — Total $35.000) va a demorar unos 30 minutos. ¡Gracias por tu paciencia!"]);
   assert.match((await alCliente(`/Demora #${id} 45 min`))[0], /unos 45 minutos/);
   assert.match((await alCliente(`/demora ${id} 20 minutos`))[0], /unos 20 minutos/);
   assert.match((await alCliente(`/demorar ${id} 1 hora`))[0], /aproximadamente 1 hora\./);
   assert.match((await alCliente(`/demora ${id} 2 horas`))[0], /aproximadamente 2 horas\./);
   assert.match((await alCliente(`/demora ${id} 90`))[0], /unos 90 minutos/);
-  assert.match((await alCliente(`/Listo #${id}`))[0], /Tu pedido #1 está listo/);
+  assert.match((await alCliente(`/Listo #${id}`))[0], /Tu pedido #1 \(1 × Gorra clásica — Total \$35\.000\) está listo/);
   assert.match((await alCliente(`/terminado ${id}`))[0], /está listo/);
-  assert.equal((await alCliente(`/avisa #${id} Ya salió el domiciliario`))[0], "Hola Ana,\nYa salió el domiciliario");
-  assert.equal((await alCliente(`/mensaje ${id} Gracias`))[0], "Hola Ana,\nGracias");
+  assert.equal((await alCliente(`/avisa #${id} Ya salió el domiciliario`))[0], "Hola Ana,\nYa salió el domiciliario\nTu pedido #1: 1 × Gorra clásica — Total $35.000");
+  assert.equal((await alCliente(`/mensaje ${id} Gracias`))[0], "Hola Ana,\nGracias\nTu pedido #1: 1 × Gorra clásica — Total $35.000");
+});
+
+test("el aviso dice qué pidió el cliente, con el número del pedido y el total", async () => {
+  const m = mundo();
+  const lineas = [{ id: "clasica", nombre: "Gorra clásica", cant: 2, precio: 35000 }, { id: "nino", nombre: "Gorra para niño", cant: 1, precio: 30000 }];
+  const id = await m.pedido({ lineas, total: 100000 });
+  const t = async (orden) => m.textoA(await m.priv(SOCIA, orden), CLIENTE)[0];
+  assert.equal(await t(`/listo ${id}`), `Hola Ana,\nTu pedido #${id} (2 × Gorra clásica, 1 × Gorra para niño — Total $100.000) está listo. ¡Gracias por tu compra!`);
+  assert.match(await t(`/demora ${id} 15`), new RegExp(`Tu pedido #${id} \\(2 × Gorra clásica, 1 × Gorra para niño — Total \\$100\\.000\\) va a demorar unos 15 minutos`));
+  assert.match(await t(`/avisar ${id} Estamos en camino`), new RegExp(`^Hola Ana,\\nEstamos en camino\\nTu pedido #${id}: 2 × Gorra clásica, 1 × Gorra para niño — Total \\$100\\.000$`));
+
+  // Con muchos productos, los demás se cuentan en vez de llenar el mensaje.
+  const siete = Array.from({ length: 7 }, (_, i) => ({ id: `p${i}`, nombre: `Gorra ${i}`, cant: 1, precio: 1000 }));
+  const idGrande = await m.pedido({ lineas: siete, total: 7000 });
+  const grande = await t(`/listo ${idGrande}`);
+  assert.match(grande, /1 × Gorra 0, 1 × Gorra 1, 1 × Gorra 2, 1 × Gorra 3, 1 × Gorra 4, y 2 más — Total \$7\.000/);
+  assert.doesNotMatch(grande, /Gorra 5/);
 });
 
 test("/demora mal escrita explica cómo y no le manda nada al cliente", async () => {

@@ -69,7 +69,7 @@ test("/avisar: le escribe al cliente de Telegram del pedido y le confirma a la d
   const id = await m.pedido();
   const r = await m.tg(DUENA, `/avisar ${id} Tu pedido ya salió para tu casa`);
   const alCliente = r.find((x) => String(x.cuerpo.chat_id) === "555");
-  assert.equal(alCliente.cuerpo.text, "Hola Ana,\nTu pedido ya salió para tu casa"); // mensaje directo: sin el nombre del negocio como etiqueta
+  assert.equal(alCliente.cuerpo.text, "Hola Ana,\nTu pedido ya salió para tu casa\nTu pedido #1: 1 × Gorra clásica — Total $35.000"); // mensaje directo, con el número y qué pidió, sin el nombre del negocio como etiqueta
   assert.match(m.aLaDuena(r)[0].cuerpo.text, /Enviado a Ana \(pedido #1\)/);
 });
 
@@ -77,9 +77,9 @@ test("/demora y /listo mandan textos listos", async () => {
   const m = mundo();
   const id = await m.pedido();
   const d = await m.tg(DUENA, `/demora ${id} 30`);
-  assert.match(d.find((x) => String(x.cuerpo.chat_id) === "555").cuerpo.text, /Tu pedido #1 va a demorar unos 30 minutos/);
+  assert.match(d.find((x) => String(x.cuerpo.chat_id) === "555").cuerpo.text, /Tu pedido #1 \(1 × Gorra clásica — Total \$35\.000\) va a demorar unos 30 minutos/);
   const l = await m.tg(DUENA, `/listo ${id}`);
-  assert.match(l.find((x) => String(x.cuerpo.chat_id) === "555").cuerpo.text, /Tu pedido #1 está listo/);
+  assert.match(l.find((x) => String(x.cuerpo.chat_id) === "555").cuerpo.text, /Tu pedido #1 \(1 × Gorra clásica — Total \$35\.000\) está listo/);
 });
 
 test("el aviso al cliente es un mensaje directo: saludo con su primer nombre, sin el nombre del negocio como etiqueta", async () => {
@@ -87,10 +87,10 @@ test("el aviso al cliente es un mensaje directo: saludo con su primer nombre, si
   const id = await m.pedido({ nombre: "Ana María Inventada" });
   const d = await m.tg(DUENA, `/demora ${id} 30`);
   const texto = d.find((x) => String(x.cuerpo.chat_id) === "555").cuerpo.text;
-  assert.equal(texto, `Hola Ana,\nTu pedido #${id} va a demorar unos 30 minutos. ¡Gracias por tu paciencia!`);
+  assert.equal(texto, `Hola Ana,\nTu pedido #${id} (1 × Gorra clásica — Total $35.000) va a demorar unos 30 minutos. ¡Gracias por tu paciencia!`);
   assert.ok(!texto.includes(BASE.nombre));
   const l = await m.tg(DUENA, `/listo ${id}`);
-  assert.equal(l.find((x) => String(x.cuerpo.chat_id) === "555").cuerpo.text, `Hola Ana,\nTu pedido #${id} está listo. ¡Gracias por tu compra!`);
+  assert.equal(l.find((x) => String(x.cuerpo.chat_id) === "555").cuerpo.text, `Hola Ana,\nTu pedido #${id} (1 × Gorra clásica — Total $35.000) está listo. ¡Gracias por tu compra!`);
   // La dueña sí ve la confirmación en tono de aviso interno.
   assert.match(m.aLaDuena(l)[0].cuerpo.text, /Enviado a Ana María Inventada/);
 });
@@ -125,9 +125,11 @@ test("el mensaje se limpia y se recorta; Telegram caído o bot bloqueado se le e
   const id = await m.pedido();
   const r = await m.tg(DUENA, `/avisar ${id} hola\n\n\u0000${"x".repeat(900)}`);
   const texto = r.find((x) => String(x.cuerpo.chat_id) === "555").cuerpo.text;
-  assert.equal(texto.split("\n").length, 2); // solo el salto después del saludo; los del texto de la dueña se quitan
-  assert.ok(!/[\u0000-\u001f]/.test(texto.split("\n")[1]));
-  assert.ok(texto.length <= "Hola Ana,\n".length + 500);
+  const lineas = texto.split("\n");
+  assert.equal(lineas.length, 3); // saludo, texto de la dueña y el pedido; los saltos del texto de la dueña se quitan
+  assert.ok(!/[\u0000-\u001f]/.test(lineas[1]));
+  assert.ok(lineas[1].length <= 500);
+  assert.match(lineas[2], /^Tu pedido #1: /);
   m.fallan.add("555");
   const f = await m.tg(DUENA, `/avisar ${id} hola`);
   assert.match(m.aLaDuena(f).at(-1).cuerpo.text, /No se pudo enviar el mensaje a Ana/);
@@ -149,7 +151,7 @@ test("WhatsApp: se puede escribir dentro de las 24 horas; pasado ese tiempo se l
   const ok = await m.tg(DUENA, `/avisar ${dentro} Estamos preparando tu pedido`);
   const wa = ok.find((x) => /graph\.facebook\.com/.test(x.url));
   assert.equal(wa.cuerpo.to, "573001112233");
-  assert.equal(wa.cuerpo.text.body, "Hola Beto,\nEstamos preparando tu pedido");
+  assert.equal(wa.cuerpo.text.body, `Hola Beto,\nEstamos preparando tu pedido\nTu pedido #${dentro}: 1 × Gorra clásica — Total $35.000`);
   assert.match(m.aLaDuena(ok)[0].cuerpo.text, /Enviado a Beto/);
 
   const fuera = await m.pedido({ canal: "whatsapp", usuario: "573009998877", contacto: "https://wa.me/573009998877", nombre: "Dora" });
