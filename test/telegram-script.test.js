@@ -2,8 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
 import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
-const SCRIPT = new URL("../scripts/telegram.mjs", import.meta.url).pathname;
+const SCRIPT = fileURLToPath(new URL("../scripts/telegram.mjs", import.meta.url)); // fileURLToPath: en Windows .pathname da "/C:/..." y falla
 const TOKEN = "000000000:INVENTADO_SOLO_PARA_PRUEBAS_00000"; // claramente falso
 const CLAVE = "clave_inventada_para_pruebas_1234567890abcdef";
 
