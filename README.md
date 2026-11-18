@@ -10,7 +10,7 @@ Corre gratis en Cloudflare Workers con una base D1. Los negocios de ejemplo son 
 - Pedido con cantidades, resumen, nombre y nota de entrega. Los precios se toman siempre del catálogo, no de lo que mande el cliente.
 - **Hoja de Google del cliente** (sin archivo de claves; ver más abajo): pedidos, lista de clientes y productos que la dueña edita desde el celular. BORRAR también borra los datos en la hoja.
 - La dueña le escribe a un cliente desde Telegram (`/demora 12 30`, `/listo 12`, `/avisar 12 texto`).
-- Aviso a la dueña por Telegram. Ella escribe `/resumen` y ve los pedidos de hoy y **cuál canal funciona mejor** (conversaciones y pedidos de Telegram contra WhatsApp).
+- Aviso a las socias por Telegram (a un grupo de las tres, o a cada una). Ella escribe `/resumen` y ve los pedidos de hoy y **cuál canal funciona mejor** (conversaciones y pedidos de Telegram contra WhatsApp).
 - Sin IA: son botones. Falla menos y no gasta cupos.
 - Protecciones: clave secreta en Telegram, firma de cada mensaje en WhatsApp, mensajes repetidos no duplican pedidos, tope de 60 mensajes por hora por persona.
 
@@ -19,7 +19,7 @@ Corre gratis en Cloudflare Workers con una base D1. Los negocios de ejemplo son 
 npm install --ignore-scripts
 npm test
 ```
-Eso corre 97 pruebas con Telegram, WhatsApp y la hoja de Google simulados. (Las del almacén usan `node:sqlite`, que viene con Node 22.5 o más nuevo; saca un aviso de «experimental», es normal.)
+Eso corre 107 pruebas con Telegram, WhatsApp y la hoja de Google simulados. (Las del almacén usan `node:sqlite`, que viene con Node 22.5 o más nuevo; saca un aviso de «experimental», es normal.)
 
 ## Probar el Worker completo en tu computador
 ```bash
@@ -52,8 +52,9 @@ Guía paso a paso (y la parte para la dueña): [`docs/GUIA-HOJA-GOOGLE.md`](docs
 - Base ya publicada antes de esta versión: corre una vez `migraciones/2026-11-05-catalogo-y-avisos.sql`.
 - **Estos pasos están escritos de memoria y no se verificaron en la pantalla de Google hoy**: los nombres de los menús pueden variar.
 
-## Comandos de la dueña (por Telegram, solo desde `OWNER_TELEGRAM_ID`)
-`/resumen` pedidos de hoy y qué canal vende más · `/demora 12 30` y `/listo 12` avisan al cliente · `/avisar 12 texto` le escribe lo que quieras · `/catalogo` revisa la hoja de productos · `/reintentar` copia a la hoja lo pendiente · `/ayuda` la lista.
+## Comandos de las socias (por Telegram: en privado o en el grupo de alertas)
+`/resumen` pedidos de hoy y qué canal vende más · `/demora 12 30` y `/listo 12` avisan al cliente · `/avisar 12 texto` le escribe lo que quieras · `/catalogo` revisa la hoja de productos · `/reintentar` copia a la hoja lo pendiente · `/ayuda` la lista · `/id` dice tu número de Telegram y el del chat (sirve para cualquiera).
+Varias socias: `OWNER_TELEGRAM_ID = "111,222,333"`. Grupo de Telegram de las socias: `ALERTAS_CHAT_ID = "-100..."` (el bot manda ahí cada aviso de pedido y solo obedece a las socias en ese grupo; si el grupo falla, avisa a cada una por privado). Guía completa: [`docs/GUIA-HOJA-GOOGLE.md`](docs/GUIA-HOJA-GOOGLE.md).
 **WhatsApp:** solo se le puede escribir a un cliente dentro de las 24 horas siguientes a su último mensaje; pasado ese tiempo el bot te da el enlace para que le escribas tú.
 
 ## Límites que debes decirle al cliente

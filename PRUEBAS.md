@@ -36,7 +36,14 @@ Todo con datos **inventados** y sin cuentas reales. Claude no vio ni usó ningun
 | Migración de una base ya publicada (`migraciones/2026-11-05-catalogo-y-avisos.sql`) | base creada con el esquema anterior (con un borrado pendiente viejo adentro), migración, y el código nuevo encima; `schema.sql` corrido dos veces | Funciona; el pendiente viejo se conserva; correr la migración dos veces da error («duplicate column»), por eso la guía dice «una sola vez» |
 | Las pruebas detectan fallas | Se quitó (una por una) la regla de 24 horas, la verificación de «es la dueña», el «ocultar lo dudoso» y la conservación del último menú | En cada caso falló al menos una prueba (bien) |
 
-Total: 97 pruebas automáticas, todas pasan (26 de la base, 22 de la hoja y el almacén, 10 del ayudante de Telegram y 39 de catálogo, clientes y avisos).
+| **— Varias socias y grupo de Telegram —** | | |
+| Lista de socias y grupo | `OWNER_TELEGRAM_ID` con varios números (con espacios, basura y comas vacías), `ALERTAS_CHAT_ID` solo si es negativo y largo | Pasa |
+| `/id` | contesta número de la persona y del chat, en privado y en un grupo cualquiera, a cualquiera | Pasa |
+| Avisos de pedido | llegan una sola vez al grupo; sin grupo, a cada socia; con el grupo caído, a cada socia por privado; grupo mal escrito, ignorado; si nadie recibe, se nota el error y el pedido igual se guarda | Pasa |
+| Órdenes en el grupo | las socias dan `/demora`, `/avisar`, `/ayuda` y todas ven la respuesta; se ignora a quien no es socia, otro grupo, conversación normal, `/start`, fotos y botones; funciona en «group» y «supergroup»; los clientes siguen igual en privado y no pueden dar órdenes | Pasa |
+| Las pruebas detectan fallas | Se quitó la verificación del grupo, la de «es socia» y el respaldo por privado | En cada caso falló al menos una prueba (bien) |
+
+Total: 107 pruebas automáticas, todas pasan (26 de la base, 22 de la hoja y el almacén, 10 del ayudante de Telegram, 39 de catálogo, clientes y avisos, y 10 del grupo).
 
 ## Errores encontrados al probar
 - (Catálogo y avisos) Una prueba cambiaba la configuración compartida (la palabra secreta) y contaminaba a las siguientes; era un error de la prueba, se corrigió haciendo copias. Otra contaba mal los avisos (10, no 9).
@@ -54,6 +61,7 @@ Total: 97 pruebas automáticas, todas pasan (26 de la base, 22 de la hoja y el a
 - Que una persona lea los textos y los encuentre claros (solo se probó que funcionen).
 - **La guía del ensayo** (`docs/GUIA-PILOTO-TELEGRAM.md`): los pasos con Cloudflare (`login`, `d1 create`, `deploy`, `secret put`) y con BotFather no se ejecutaron en una cuenta real; están escritos de memoria. **No se probó en Windows** (el computador del ensayo): ni la instalación de Node (con instalador o con el zip sin permisos), ni `cmd`, ni la entrada escondida del token, ni el bloqueo de PowerShell que se menciona; tampoco en Mac.
 - **La hoja de productos con Google de verdad:** todo se probó contra una hoja simulada. No se comprobó: la lista desplegable Sí/No, la edición desde la app del celular, que Google oculte la comilla con que se protege un texto como `@usuario`, el tiempo de respuesta de Google (cuando el catálogo guardado vence, el cliente espera esa consulta, de 1 a 3 segundos según lo esperado), cuántas filas aguanta, ni dos personas editando a la vez.
+- **El grupo con Telegram real:** no se probó que Telegram entregue al bot los comandos escritos en un grupo (por defecto los bots en grupos solo reciben comandos, y eso es justo lo que se usa), ni que el número del grupo cambie al convertirse en supergrupo (la guía lo avisa), ni que `wrangler deploy` conserve los secretos ya guardados.
 - **Avisos a clientes con Telegram o WhatsApp reales:** solo con servicios simulados. La regla de 24 horas de WhatsApp sale de la documentación conocida de Meta, sin comprobarla hoy. Cuando un cliente de WhatsApp escribe después de recibir un aviso libre, el bot lo trata como un mensaje normal (no reenvía su respuesta a la dueña).
 - **La hoja de verdad:** no se desplegó el Apps Script en Google ni se llamó desde el Worker. Se probó con un Google de mentira. No se comprobó que `fetch` siga bien la redirección que responde Apps Script a un POST, ni que los pasos del README coincidan con la pantalla de Google de hoy (se escribieron de memoria).
 - Los topes de Apps Script con tráfico real (tiempo por ejecución, bloqueo) y qué pasa con una hoja de miles de filas (se busca el pedido recorriendo la columna).

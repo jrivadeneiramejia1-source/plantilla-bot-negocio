@@ -1,4 +1,4 @@
-// Comandos de la dueña (solo por Telegram, solo desde el número en OWNER_TELEGRAM_ID).
+// Comandos de las socias (solo por Telegram: en privado o en el grupo de alertas, y solo desde los números de OWNER_TELEGRAM_ID).
 import { limpiar, resumenDelDia } from "./core.js";
 import { enviarTelegram, enviarWhatsApp } from "./envio.js";
 import { crearHoja } from "./sheets.js";
@@ -7,13 +7,14 @@ import { refrescarCatalogo } from "./catalogo.js";
 const VENTANA_WHATSAPP_MS = 24 * 3600e3; // WhatsApp solo deja escribir mensajes libres 24 horas después del último mensaje del cliente
 
 const AYUDA =
-  "Comandos de la dueña:\n" +
+  "Comandos de las socias:\n" +
   "/resumen — pedidos de hoy y qué canal vende más\n" +
   "/avisar 12 texto — le escribo al cliente del pedido 12\n" +
   "/demora 12 30 — le aviso que su pedido 12 demora 30 minutos\n" +
   "/listo 12 — le aviso que su pedido 12 está listo\n" +
   "/catalogo — reviso la hoja de productos (si está vacía, la lleno con ejemplos)\n" +
-  "/reintentar — copio a la hoja lo que no se pudo copiar";
+  "/reintentar — copio a la hoja lo que no se pudo copiar\n" +
+  "/id — te digo tu número de Telegram y el del chat (sirve para cualquiera)";
 
 async function avisarCliente(env, deps, negocio, id, texto) {
   const p = await deps.store.getPedido(id);

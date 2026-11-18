@@ -6,7 +6,8 @@ compatibility_date = "2025-01-01"
 # `wrangler secret put NOMBRE` o en .dev.vars para pruebas locales. Ver README.
 [vars]
 NEGOCIO = "flores-fomi"      # cuál catálogo usar: flores-fomi, fresas-crema o gorras
-OWNER_TELEGRAM_ID = ""       # número de Telegram de la dueña (para avisos y /resumen)
+OWNER_TELEGRAM_ID = ""       # números de Telegram de las socias, separados por coma (ej. "111,222,333"); el bot les obedece
+ALERTAS_CHAT_ID = ""         # (opcional) número del grupo de Telegram de las socias; empieza con - (ej. "-1001234567890")
 WA_PHONE_NUMBER_ID = ""      # identificador del número en WhatsApp Cloud API
 WA_API_VERSION = "v21.0"     # confirmar la versión vigente en la documentación de Meta
 
