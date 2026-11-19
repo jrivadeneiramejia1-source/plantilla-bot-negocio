@@ -93,6 +93,7 @@ export function cargarAppsScript(token = "palabra-secreta") {
   const api = (h) => ({
     appendRow: (f) => h.filas.push(f.slice()),
     getLastRow: () => h.filas.length,
+    getLastColumn: () => h.filas.reduce((m, f) => Math.max(m, f.length), 0),
     setFrozenRows: (n) => (h.congeladas = n),
     deleteRow: (n) => h.filas.splice(n - 1, 1),
     getRange: (fila, col, nf = 1, nc = 1) => ({
@@ -100,6 +101,7 @@ export function cargarAppsScript(token = "palabra-secreta") {
       setValues: (v) => v.forEach((r, i) => r.forEach((x, j) => ((h.filas[fila - 1 + i] ??= [])[col - 1 + j] = x))),
       setValue: (x) => ((h.filas[fila - 1] ??= [])[col - 1] = x),
       setDataValidation: (r) => h.validaciones.push({ fila, col, nf, regla: r }),
+      setNumberFormat: (f) => (h.formatos ??= []).push({ fila, col, nf, nc, formato: f }),
     }),
   });
   const libro = { getSheetByName: (n) => (hojas[n] ? api(hojas[n]) : null), insertSheet: (n) => api(crear(n)) };

@@ -19,7 +19,7 @@ Corre gratis en Cloudflare Workers con una base D1. Los negocios de ejemplo son 
 npm install --ignore-scripts
 npm test
 ```
-Eso corre 138 pruebas con Telegram, WhatsApp y la hoja de Google simulados. (Las del almacén usan `node:sqlite`, que viene con Node 22.5 o más nuevo; saca un aviso de «experimental», es normal.)
+Eso corre 146 pruebas con Telegram, WhatsApp y la hoja de Google simulados. (Las del almacén usan `node:sqlite`, que viene con Node 22.5 o más nuevo; saca un aviso de «experimental», es normal.)
 
 ## Probar el Worker completo en tu computador
 ```bash
@@ -42,8 +42,8 @@ La guía completa, con comandos y qué hacer si algo falla, está en [`docs/GUIA
 ## Hoja de Google: pedidos, clientes y productos que se editan desde el celular
 Un **Apps Script** (programita de Google) vive **dentro de la hoja del cliente**. Así los datos quedan en su cuenta y no hace falta ningún archivo de claves. Tres pestañas:
 - **Productos:** el catálogo. La dueña cambia nombres, precios y «Activo (Sí/No)» desde la app de Google Sheets; el bot lo usa en unos 2 minutos. Si la hoja falla o queda vacía, el bot conserva el último menú bueno.
-- **Pedidos:** una fila por pedido.
-- **Clientes:** una fila por cliente (nombre, contacto, cuántos pedidos y cuánto ha comprado).
+- **Pedidos:** una fila por pedido, con fecha en hora de Colombia, celular, contacto, dirección y nota en columnas separadas, y el total en pesos (`$9.000`).
+- **Clientes:** una fila por cliente (nombre, celular, contacto, cuántos pedidos y cuánto ha comprado).
 
 Guía paso a paso (y la parte para la dueña): [`docs/GUIA-HOJA-GOOGLE.md`](docs/GUIA-HOJA-GOOGLE.md).
 - Si la copia de un pedido falla, el pedido igual se guarda y la dueña recibe un aviso; `/reintentar` copia los que faltan y completa los borrados pendientes.

